@@ -1,0 +1,71 @@
+JB Hi-Fi AU | ok | parsed=10 | matched=5
+  $429.00 [95.8%] Apple AirPods Pro 3
+  https://www.jbhifi.com.au/products/apple-airpods-pro-3
+  $219.00 [94.3%] Apple AirPods 4
+  https://www.jbhifi.com.au/products/apple-airpods-4
+  $239.00 [83.0%] Apple AirPods 4 with Active Noise Cancellation
+  https://www.jbhifi.com.au/products/apple-airpods-4-with-active-noise-cancellation
+
+Harvey Norman AU | http_error | parsed=0 | matched=0
+  ERROR: HTTP 502
+
+JB Hi-Fi NZ | ok | parsed=10 | matched=4
+  $418.00 [95.8%] Apple AirPods Pro 3
+  https://www.jbhifi.co.nz/products/apple-airpods-pro-3
+  $234.00 [94.3%] Apple AirPods 4
+  https://www.jbhifi.co.nz/products/apple-airpods-4
+  $329.00 [83.0%] Apple AirPods 4 with Active Noise Cancellation
+  https://www.jbhifi.co.nz/products/apple-airpods-4-with-active-noise-cancellation
+
+Harvey Norman NZ | no_products_parsed | parsed=0 | matched=0
+
+Big W | no_products_parsed | parsed=0 | matched=0
+
+Officeworks | empty_page | parsed=0 | matched=0
+
+The Good Guys | ok | parsed=12 | matched=5
+  $999.00 [86.9%] Apple AirPods Max 2 - Midnight
+  https://www.thegoodguys.com.au/apple-airpods-max-2-midnight-mhwk4zaa
+  $3797.00 [71.4%] Apple iPhone 17 Pro Max 2TB Silver
+  https://www.thegoodguys.com.au/apple-iphone-17-pro-max-2tb-silver-mfyy4xa
+  $3797.00 [71.4%] Apple iPhone 17 Pro Max 2TB Cosmic Orange
+  https://www.thegoodguys.com.au/apple-iphone-17-pro-max-2tb-cosmic-orange-mg004xa
+
+Bunnings AU | parsed_no_match | parsed=12 | matched=0
+
+Costco AU | no_products_parsed | parsed=0 | matched=0
+
+Anaconda AU | parsed_no_match | parsed=12 | matched=0
+
+BCF | no_products_parsed | parsed=0 | matched=0
+
+Noelle Leeming | parsed_no_match | parsed=7 | matched=0
+
+PB Tech | no_products_parsed | parsed=0 | matched=0
+
+Bunnings NZ | no_products_parsed | parsed=0 | matched=0
+
+Auckland Airport | no_products_parsed | parsed=0 | matched=0
+
+Digi Direct | ok | parsed=12 | matched=5
+  $348.00 [95.8%] Apple AirPods Pro 3
+  https://www.digidirect.com.au/apple-airpods-pro-3
+  $206.15 [94.3%] Apple AirPods 4
+  https://www.digidirect.com.au/apple-airpods-4
+  $999.00 [86.9%] Apple AirPods Max with USB-C (Orange) (Gen 2)
+  https://www.digidirect.com.au/apple-airpods-max-with-usb-c-orange-gen-2
+
+Camera Pro | parsed_no_match | parsed=2 | matched=0
+
+Rubber Monkey AU | parsed_no_match | parsed=12 | matched=0
+
+Rubber Monkey NZ | no_products_parsed | parsed=0 | matched=0
+
+Photo Gear | http_error | parsed=0 | matched=0
+  ERROR: HTTP 404
+
+Photo Warehouse | http_error | parsed=0 | matched=0
+  ERROR: HTTP 404
+
+Jacobs Digital | parsed_no_match | parsed=2 | matched=0
+

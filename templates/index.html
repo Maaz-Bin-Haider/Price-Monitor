@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Price Monitor{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Watchlist</h1>
+    <p class="page-subtitle">{{ jobs|length }} product{% if jobs|length != 1 %}s{% endif %} monitored across AU &amp; NZ</p>
+  </div>
+  <a href="/add" class="btn btn-primary">+ Add Product</a>
+</div>
+
+{% if not jobs %}
+<div class="empty-state">
+  <div style="font-size:3rem;margin-bottom:1rem">📡</div>
+  <h2>No products yet</h2>
+  <p>Add a product to start monitoring prices across 22 AU &amp; NZ retailers.</p>
+  <a href="/add" class="btn btn-primary">Add your first product</a>
+</div>
+{% else %}
+<div class="card" style="padding:0;overflow:hidden">
+  <table>
+    <thead>
+      <tr>
+        <th>Product</th>
+        <th>Target</th>
+        <th>Sites</th>
+        <th>Schedule</th>
+        <th>Last Checked</th>
+        <th>Lowest Found</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for job in jobs %}
+      {% set sites = job.selected_sites | from_json %}
+      {% set au_count = sites | selectattr_geo('au') | list | length %}
+      {% set nz_count = sites | selectattr_geo('nz') | list | length %}
+      {% set currency = 'AU$' if au_count >= nz_count else 'NZ$' %}
+      <tr>
+        <td>
+          <div style="font-weight:600;color:var(--text)">{{ job.product_name }}</div>
+          <div style="font-size:0.75rem;color:var(--muted);font-family:var(--mono)">ID #{{ job.id }}</div>
+        </td>
+        <td>
+          <span class="price price-normal">{{ currency }}{{ "%.2f"|format(job.target_price) }}</span>
+        </td>
+        <td>
+          {% set site_names = sites | site_names_from_domains %}
+          <span title="{{ site_names | join(', ') }}"
+                style="font-family:var(--mono);font-size:0.8rem;cursor:help;border-bottom:1px dashed var(--border-bright)">
+            {{ sites | length }} sites ↗
+          </span>
+        </td>
+        <td>
+          <span style="font-family:var(--mono);font-size:0.8rem;color:var(--muted)">
+            {% if job.schedule_interval == '12h' %}Every 12h
+            {% elif job.schedule_interval == '24h' %}Every 24h
+            {% elif job.schedule_interval == 'weekly' %}Weekly
+            {% elif job.schedule_interval == 'monthly' %}Monthly
+            {% else %}{{ job.schedule_interval }}{% endif %}
+          </span>
+        </td>
+        <td style="font-size:0.82rem;color:var(--muted)">
+          {% if job.last_run_at %}
+            {{ job.last_run_at | time_ago }}
+          {% else %}
+            <span style="color:var(--border-bright)">Never</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if job.last_lowest_price %}
+            <span class="price {% if job.last_lowest_price <= job.target_price %}price-green{% else %}price-normal{% endif %}">
+              {{ currency }}{{ "%.2f"|format(job.last_lowest_price) }}
+            </span>
+          {% else %}
+            <span class="price price-muted">—</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if job.alert_sent %}
+            <span class="badge badge-amber">● Alerted</span>
+          {% else %}
+            <span class="badge badge-green">● Watching</span>
+          {% endif %}
+        </td>
+        <td>
+          <div style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap">
+            <a href="/job/{{ job.id }}" class="btn btn-ghost" style="font-size:0.7rem;padding:0.35rem 0.7rem">View</a>
+            <button
+              class="btn btn-run"
+              style="font-size:0.7rem;padding:0.35rem 0.7rem"
+              hx-post="/job/{{ job.id }}/run"
+              hx-target="#run-status-{{ job.id }}"
+              hx-swap="innerHTML"
+              onclick="handleRunNow(event, {{ job.id }})"
+            >
+              <span class="btn-label">▶ Run</span>
+              <span class="spinner" style="display:none"></span>
+            </button>
+            <span id="run-status-{{ job.id }}"></span>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<script>
+function handleRunNow(event, jobId) {
+  const btn = event.currentTarget;
+  const label = btn.querySelector('.btn-label');
+  const spinner = btn.querySelector('.spinner');
+  label.style.display = 'none';
+  spinner.style.display = 'inline-block';
+  btn.disabled = true;
+
+  fetch('/job/' + jobId + '/run', { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) {
+        const status = document.getElementById('run-status-' + jobId);
+        status.innerHTML = '<span style="color:var(--red);font-size:0.75rem;font-family:var(--mono)">Error</span>';
+        btn.disabled = false;
+        label.style.display = 'inline';
+        spinner.style.display = 'none';
+      } else {
+        window.location.href = '/job/' + data.job_id;
+      }
+    })
+    .catch(() => {
+      btn.disabled = false;
+      label.style.display = 'inline';
+      spinner.style.display = 'none';
+    });
+  event.preventDefault();
+}
+</script>
+{% endblock %}

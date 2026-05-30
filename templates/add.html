@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Add Product — Price Monitor{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Add Product</h1>
+    <p class="page-subtitle">Set up a new price monitoring watchlist entry</p>
+  </div>
+  <a href="/" class="btn btn-ghost">← Back</a>
+</div>
+
+<form method="post" action="/add" onsubmit="return validateForm()">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start">
+
+    <!-- Left column: product details -->
+    <div>
+      <div class="card">
+        <div class="card-header">
+          <div style="font-family:var(--mono);font-size:0.75rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted)">
+            Product Details
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="product_name">Product Name</label>
+          <input type="text" id="product_name" name="product_name"
+                 placeholder="e.g. Sony WH-1000XM5 Headphones"
+                 required maxlength="500">
+        </div>
+
+        <div class="form-group">
+          <label for="target_price">Target Price (AUD/NZD)</label>
+          <input type="number" id="target_price" name="target_price"
+                 placeholder="299.00" step="0.01" min="0.01" required>
+        </div>
+
+        <div class="form-group">
+          <label for="user_email">Alert Email</label>
+          <input type="email" id="user_email" name="user_email"
+                 placeholder="you@example.com" required>
+        </div>
+
+        <div class="form-group">
+          <label for="schedule_interval">Check Frequency</label>
+          <select id="schedule_interval" name="schedule_interval">
+            <option value="12h">Every 12 hours</option>
+            <option value="24h" selected>Every 24 hours</option>
+            <option value="weekly">Once a week (Monday)</option>
+            <option value="monthly">Once a month (1st)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right column: site picker -->
+    <div>
+      <div class="card">
+        <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
+          <div style="font-family:var(--mono);font-size:0.75rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted)">
+            Select Sites
+          </div>
+          <span id="site-count" style="font-family:var(--mono);font-size:0.75rem;color:var(--accent)">0 selected</span>
+        </div>
+
+        <div id="site-error" style="display:none;color:var(--red);font-size:0.8rem;margin-bottom:1rem;font-family:var(--mono)">
+          ⚠ Select at least one site
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
+          <!-- AU Sites -->
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem">
+              <span style="font-family:var(--mono);font-size:0.7rem;letter-spacing:0.08em;color:var(--muted);text-transform:uppercase">
+                🇦🇺 Australia
+              </span>
+              <button type="button" class="btn btn-ghost" style="font-size:0.65rem;padding:0.2rem 0.5rem"
+                      onclick="toggleAll('au')">All AU</button>
+            </div>
+            {% for site in sites_au %}
+            <label style="display:flex;align-items:center;gap:0.5rem;padding:0.35rem 0;cursor:pointer;font-family:var(--sans);text-transform:none;letter-spacing:0;font-size:0.82rem;color:var(--text)">
+              <input type="checkbox" name="selected_sites" value="{{ site.domain }}"
+                     class="site-cb au-cb" onchange="updateCount()"
+                     style="width:14px;height:14px;accent-color:var(--accent)">
+              {{ site.name }}
+              <span style="margin-left:auto;font-size:0.65rem;font-family:var(--mono);color:var(--muted)">
+                {% if site.tier == 'heavy' %}●●●{% elif site.tier == 'medium' %}●●○{% else %}●○○{% endif %}
+              </span>
+            </label>
+            {% endfor %}
+          </div>
+
+          <!-- NZ Sites -->
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem">
+              <span style="font-family:var(--mono);font-size:0.7rem;letter-spacing:0.08em;color:var(--muted);text-transform:uppercase">
+                🇳🇿 New Zealand
+              </span>
+              <button type="button" class="btn btn-ghost" style="font-size:0.65rem;padding:0.2rem 0.5rem"
+                      onclick="toggleAll('nz')">All NZ</button>
+            </div>
+            {% for site in sites_nz %}
+            <label style="display:flex;align-items:center;gap:0.5rem;padding:0.35rem 0;cursor:pointer;font-family:var(--sans);text-transform:none;letter-spacing:0;font-size:0.82rem;color:var(--text)">
+              <input type="checkbox" name="selected_sites" value="{{ site.domain }}"
+                     class="site-cb nz-cb" onchange="updateCount()"
+                     style="width:14px;height:14px;accent-color:var(--accent)">
+              {{ site.name }}
+              <span style="margin-left:auto;font-size:0.65rem;font-family:var(--mono);color:var(--muted)">
+                {% if site.tier == 'heavy' %}●●●{% elif site.tier == 'medium' %}●●○{% else %}●○○{% endif %}
+              </span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);font-size:0.72rem;color:var(--muted);font-family:var(--mono)">
+          ●●● Heavy (JS render + proxy) &nbsp;·&nbsp; ●●○ Medium (JS render) &nbsp;·&nbsp; ●○○ Light (proxy only)
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:1.5rem;display:flex;gap:0.75rem">
+    <button type="submit" class="btn btn-primary" style="padding:0.65rem 2rem">Add to watchlist</button>
+    <a href="/" class="btn btn-ghost">Cancel</a>
+  </div>
+</form>
+
+<script>
+function updateCount() {
+  const checked = document.querySelectorAll('.site-cb:checked').length;
+  document.getElementById('site-count').textContent = checked + ' selected';
+}
+
+function toggleAll(geo) {
+  const cbs = document.querySelectorAll('.' + geo + '-cb');
+  const allChecked = Array.from(cbs).every(cb => cb.checked);
+  cbs.forEach(cb => { cb.checked = !allChecked; });
+  updateCount();
+}
+
+function validateForm() {
+  const checked = document.querySelectorAll('.site-cb:checked').length;
+  if (checked === 0) {
+    document.getElementById('site-error').style.display = 'block';
+    return false;
+  }
+  document.getElementById('site-error').style.display = 'none';
+  return true;
+}
+</script>
+{% endblock %}

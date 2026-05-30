@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f4f8; margin: 0; padding: 0; }
+    .wrapper { max-width: 600px; margin: 32px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+    .header { background: #0a0a1a; padding: 32px 36px; }
+    .header h1 { color: #fff; font-size: 22px; margin: 0 0 6px; }
+    .header p { color: #6b6b8a; font-size: 13px; margin: 0; font-family: monospace; }
+    .body { padding: 28px 36px; }
+    .highlight-box { background: #f0fff8; border: 1px solid #a7f3d0; border-radius: 6px; padding: 16px 20px; margin: 18px 0; }
+    .highlight-box .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #6b6b8a; margin-bottom: 4px; }
+    .highlight-box .value { font-size: 26px; font-weight: 700; color: #059669; font-family: monospace; }
+    .highlight-box .sub { font-size: 13px; color: #374151; margin-top: 2px; }
+    .target-line { color: #374151; font-size: 14px; margin-bottom: 18px; }
+    table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 13px; }
+    th { background: #f9fafb; text-align: left; padding: 9px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #6b7280; border-bottom: 2px solid #e5e7eb; }
+    td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    .price-cell { font-weight: 700; font-family: monospace; color: #059669; }
+    .buy-link { display: inline-block; background: #5b8dee; color: #fff !important; text-decoration: none; padding: 5px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+    .footer { background: #f9fafb; border-top: 1px solid #e5e7eb; padding: 18px 36px; font-size: 12px; color: #9ca3af; line-height: 1.6; }
+    .site-name { font-weight: 600; color: #111; }
+    .match-pct { color: #9ca3af; font-size: 11px; font-family: monospace; }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <h1>🎯 Price Alert</h1>
+    <p>PRICE MONITOR · Automated Alert</p>
+  </div>
+  <div class="body">
+    <p style="font-size:15px;color:#111;margin-bottom:16px">
+      Good news! <strong>{{ product_name }}</strong> has dropped to or below your target price.
+    </p>
+
+    <p class="target-line">Your target price: <strong>${{ "%.2f"|format(target_price) }}</strong></p>
+
+    <div class="highlight-box">
+      <div class="label">Lowest price found</div>
+      <div class="value">${{ "%.2f"|format(lowest_price) }}</div>
+      <div class="sub">at {{ lowest_site }}
+        {% if lowest_link %}
+          &nbsp;— <a href="{{ lowest_link }}" style="color:#5b8dee">Buy now ↗</a>
+        {% endif %}
+      </div>
+    </div>
+
+    <h3 style="font-size:13px;text-transform:uppercase;letter-spacing:0.08em;color:#6b7280;margin:24px 0 8px">
+      All sites below your target
+    </h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Site</th>
+          <th>Product</th>
+          <th>Price</th>
+          <th>Link</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in below_target %}
+        <tr>
+          <td class="site-name">{{ item.site_name }}</td>
+          <td>
+            {{ item.title[:70] }}{% if item.title|length > 70 %}…{% endif %}
+            <br><span class="match-pct">{{ item.match_score }}% match</span>
+          </td>
+          <td class="price-cell">${{ "%.2f"|format(item.price) }}</td>
+          <td>
+            {% if item.link %}
+              <a href="{{ item.link }}" class="buy-link">Buy ↗</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="footer">
+    You will not receive another alert for this product until the price rises above your target and drops again.
+    <br>This alert was sent by Price Monitor.
+  </div>
+</div>
+</body>
+</html>
