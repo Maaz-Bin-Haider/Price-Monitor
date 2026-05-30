@@ -419,76 +419,48 @@ def _rubbermonkey(html, base, **_):
 
 # ── CS-Cart (Harvey Norman NZ) ────────────────────────────────────────────
 def _cscart(html, base, **_):
-    """CS-Cart product search page. HN NZ uses dispatch=products.search."""
+    """
+    Harvey Norman NZ uses CS-Cart. Product data is embedded as JSON in
+    hidden inputs (select_item_json) inside product forms.
+    Links are protocol-relative //www.harveynorman.co.nz/...html
+    """
+    import json as _json
     results = []
     try:
         soup = BeautifulSoup(html, "lxml")
-
-        # CS-Cart uses various container patterns depending on theme version
-        # Try all known CS-Cart product tile selectors
-        cards = []
-        for sel in [
-            "div.ty-column3",
-            "div.ty-column4",
-            "li[class*='ty-catpage-product']",
-            "div[class*='ty-catpage-product-item']",
-            "div[id*='product_list_item']",
-            "div.product-list-item",
-            "div[class*='product-item']",
-            "li.product-item",
-        ]:
-            found = soup.select(sel)
-            if found:
-                cards = found
-                break
-
-        # Fallback: look for any element with a product link and price
-        if not cards:
-            # CS-Cart wraps products in divs with product IDs
-            cards = soup.find_all("div", id=re.compile(r"product_list_item"))
-            if not cards:
-                # Try finding product links directly
-                product_links = soup.find_all("a", class_=re.compile(
-                    r"ty-product-title|product-title|cm-history", re.I))
-                for a in product_links[:12]:
-                    title = a.get_text(strip=True)
-                    href  = abs_url(a.get("href", ""), base)
-                    # Find price in parent
-                    parent = a.parent
-                    for _ in range(5):
-                        if parent is None:
-                            break
-                        price_el = parent.find(class_=re.compile(r"ty-price|price", re.I))
-                        if price_el:
-                            price = clean_price(price_el.get_text())
-                            if price:
-                                results.append({"title": title, "price": price, "link": href})
-                            break
-                        parent = parent.parent
-                    if len(results) >= 12:
-                        break
-                return results
-
-        for card in cards[:12]:
-            name_a = (card.select_one("a[class*='ty-product-title']") or
-                      card.select_one("a.product-title") or
-                      card.select_one("a[class*='product-title']") or
-                      card.select_one("h3 a") or card.select_one("h2 a") or
-                      card.select_one("a[href*='product']"))
-            if not name_a:
+        # Each product has a form named "product_form_XXXXX"
+        forms = soup.find_all("form", attrs={"name": re.compile(r"^product_form_")})
+        for form in forms[:12]:
+            # Extract product data from the select_item_json hidden input
+            inp = form.find("input", attrs={"name": re.compile(r"select_item_json")})
+            if not inp:
                 continue
-            title = name_a.get_text(strip=True)
-            href  = abs_url(name_a.get("href", ""), base)
-            price_el = (card.select_one("span[class*='ty-price-num']") or
-                        card.select_one("span[class*='ty-price']") or
-                        card.select_one("span[class*='price']") or
-                        card.select_one("[class*='price']"))
-            price = clean_price(price_el.get_text() if price_el else "")
-            if not price:
-                prices = re.findall(r"[$]\s*([\d,]+(?:[.]\d+)?)", card.get_text(" "))
-                price = float(prices[0].replace(",","")) if prices else None
-            if title and price and href:
-                results.append({"title": title, "price": price, "link": href})
+            try:
+                data  = _json.loads(inp.get("value", "{}"))
+                items = data.get("ecommerce", {}).get("items", [])
+                if not items:
+                    continue
+                item  = items[0]
+                name  = item.get("item_name", "")
+                price = item.get("price", 0)
+                if not name or not price:
+                    continue
+            except Exception:
+                continue
+
+            # Find the product link — a.product-title inside the same tile
+            tile = form.parent
+            link_el = tile.find("a", class_=re.compile("product-title")) if tile else None
+            href = link_el.get("href", "") if link_el else ""
+            # Protocol-relative URLs like //www.harveynorman.co.nz/...
+            if href.startswith("//"):
+                href = "https:" + href
+            elif href.startswith("/"):
+                href = base + href
+            elif not href.startswith("http"):
+                continue
+
+            results.append({"title": name, "price": float(price), "link": href})
     except Exception as e:
         print(f"[PARSER] cscart: {e}")
     return results

@@ -62,7 +62,7 @@ SITES = [
     {
         "name": "Officeworks",
         "domain": "officeworks.com.au",
-        "tier": "medium",
+        "tier": "light",
         "geo": "au",
         "search_url": "https://k535caawve-dsn.algolia.net/1/indexes/prod-product-wc-bestmatch-personal?query={query}&hitsPerPage=12&attributesToRetrieve=sku,name,price,seoPath&x-algolia-application-id=K535CAAWVE&x-algolia-api-key=8a831febe0110932cfa06ff0e2024b4f",
     },
@@ -133,14 +133,14 @@ SITES = [
     {
         "name": "Digi Direct",
         "domain": "digidirect.com.au",
-        "tier": "light",
+        "tier": "medium",
         "geo": "au",
         "search_url": "https://www.digidirect.com.au/catalogsearch/result/?q={query}",
     },
     {
         "name": "Camera Pro",
         "domain": "camerapro.com.au",
-        "tier": "light",
+        "tier": "medium",
         "geo": "au",
         "search_url": "https://www.camerapro.com.au/catalogsearch/result/?q={query}",
     },

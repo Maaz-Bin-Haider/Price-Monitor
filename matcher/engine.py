@@ -11,6 +11,8 @@ ACCESSORY_KEYWORDS = [
     "stand", "strap", "charger", "battery", "sleeve", "bag", "pouch",
     "hub", "dock", "skin", "bumper", "holster",
     # Audio accessories
+    "lens", "wide-angle lens", "wide angle lens", "nd filter", "filter set", "filters",
+    "filter kit", "polarizer", "cpl filter", "telephoto", "lens cap",
     "ear pad", "ear pads", "earpads", "ear cushion", "cushion pads",
     "earbud tip", "ear tip", "ear tips", "foam tip", "wing tip",
     "replacement ear", "headband pad", "headband cover",
