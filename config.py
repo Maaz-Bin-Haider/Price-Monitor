@@ -123,11 +123,11 @@ SITES = [
         "search_url": "https://www.bunnings.co.nz/search/products?q={query}",
     },
     {
-        "name": "Auckland Airport",
-        "domain": "aucklandairport.co.nz",
+        "name": "Auckland Airport Mall",
+        "domain": "themall.aucklandairport.co.nz",
         "tier": "medium",
         "geo": "nz",
-        "search_url": "https://www.aucklandairport.co.nz/search?q={query}",
+        "search_url": "https://themall.aucklandairport.co.nz/en/intl-duty-free/search/product?q={query}",
     },
     # ── LIGHT ────────────────────────────────────────────────────────
     {
@@ -162,14 +162,14 @@ SITES = [
         "name": "Photo Gear",
         "domain": "photogear.co.nz",
         "tier": "light",
-        "geo": "nz",
+        "geo": "au",
         "search_url": "https://www.photogear.co.nz/search?type=product&q={query}",
     },
     {
         "name": "Photo Warehouse",
         "domain": "photowarehouse.co.nz",
         "tier": "light",
-        "geo": "nz",
+        "geo": "au",
         "search_url": "https://www.photowarehouse.co.nz/search?type=product&q={query}",
     },
     {

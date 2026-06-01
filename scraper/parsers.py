@@ -21,7 +21,7 @@ SITE_PARSERS = {
     "bcf.com.au":            {"_type": "bcf",           "base": "https://www.bcf.com.au"},
     "noelleeming.co.nz":     {"_type": "noelleeming",   "base": "https://www.noelleeming.co.nz"},
     "pbtech.co.nz":          {"_type": "pbtech",        "base": "https://www.pbtech.co.nz"},
-    "aucklandairport.co.nz": {"_type": "skip"},
+    "themall.aucklandairport.co.nz": {"_type": "auckland_mall", "base": "https://themall.aucklandairport.co.nz"},
     "digidirect.com.au":     {"_type": "magento",       "base": "https://www.digidirect.com.au"},
     "camerapro.com.au":      {"_type": "magento",       "base": "https://www.camerapro.com.au"},
     "rubbermonkey.com.au":   {"_type": "rubbermonkey",  "base": "https://www.rubbermonkey.com.au"},
@@ -524,6 +524,64 @@ def _algolia(html, base, **_):
     return results
 
 
+
+# ── Auckland Airport Mall (duty-free retail) ──────────────────────────────
+def _auckland_mall(html, base, **_):
+    """
+    Auckland Airport duty-free mall. Custom CMS with product cards.
+    URL: /en/intl-duty-free/search/product?q=
+    """
+    results = []
+    try:
+        soup = BeautifulSoup(html, "lxml")
+        # Try common product card selectors for retail CMSes
+        for sel in [
+            "div[class*='product-card']",
+            "div[class*='ProductCard']",
+            "div[class*='product-tile']",
+            "article[class*='product']",
+            "li[class*='product']",
+            "div[class*='product-item']",
+        ]:
+            cards = soup.select(sel)
+            if cards:
+                for card in cards[:12]:
+                    name_el = (card.select_one("h3") or card.select_one("h2") or
+                               card.select_one("[class*='name']") or card.select_one("[class*='title']"))
+                    price_el = (card.select_one("[class*='price']") or
+                                card.select_one("[class*='Price']"))
+                    link_el  = card.select_one("a")
+                    title = name_el.get_text(strip=True) if name_el else ""
+                    price = clean_price(price_el.get_text() if price_el else "")
+                    href  = abs_url(link_el.get("href","") if link_el else "", base)
+                    if title and price and href:
+                        results.append({"title": title, "price": price, "link": href})
+                if results:
+                    break
+        # Fallback: JSON in script tags
+        if not results:
+            results = _extract_json_generic(html, base)
+    except Exception as e:
+        print(f"[PARSER] auckland_mall: {e}")
+    return results
+
+
+def _extract_json_generic(html, base):
+    import re as _re
+    results = []
+    seen = set()
+    pat = (r'"(?:name|title|productName)"\s*:\s*"([^"]{5,150})"'
+           r'[^}]{0,400}?"(?:price|salePrice|currentPrice)"\s*:\s*"?(\d+\.?\d*)"?'
+           r'[^}]{0,400}?"(?:url|href|slug|urlPath)"\s*:\s*"(/[^"]{3,100})"')
+    for name, price_raw, url in _re.findall(pat, html[:2000000], _re.DOTALL):
+        if name in seen:
+            continue
+        seen.add(name)
+        p = clean_price(price_raw)
+        if name and p and p > 0:
+            results.append({"title": name, "price": p, "link": abs_url(url, base)})
+    return results
+
 # ── Dispatch ──────────────────────────────────────────────────────────────
 _EXTRACTORS = {
     "shopify":      _shopify,
@@ -542,6 +600,7 @@ _EXTRACTORS = {
     "rubbermonkey": _rubbermonkey,
     "cscart":       _cscart,
     "algolia":      _algolia,
+    "auckland_mall": _auckland_mall,
 }
 
 

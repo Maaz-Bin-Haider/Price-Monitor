@@ -1,74 +1,56 @@
-JB Hi-Fi AU | ok | parsed=10 | matched=5
-  $1799.00 [92.5%] DJI Mini 5 Pro Drone Fly More Combo Plus (DJI RC2)
-  https://www.jbhifi.com.au/products/dji-mini-5-pro-drone-fly-more-combo-plus-dji-rc2
-  $1699.00 [92.5%] DJI Mini 5 Pro Drone Fly More Combo (DJI RC2)
-  https://www.jbhifi.com.au/products/dji-mini-5-pro-drone-fly-more-combo-dji-rc2
-  $1419.00 [92.5%] DJI Mini 5 Pro Drone Fly More Combo (DJI RC-N3)
-  https://www.jbhifi.com.au/products/dji-mini-5-pro-drone-fly-more-combo-dji-rc-n3
+JB Hi-Fi AU | http_error | parsed=0 | matched=0
+  ERROR: HTTP 502
 
-Harvey Norman AU | ok | parsed=12 | matched=5
-  $1498.00 [100.0%] DJI Mini 4 Pro Fly More Combo Plus RC2
-  https://www.harveynorman.com.au/dji-mini-4-pro-fly-more-combo-plus-rc2.html
-  $1448.00 [100.0%] DJI Mini 4 Pro Fly More Combo RC2
-  https://www.harveynorman.com.au/dji-mini-4-pro-fly-more-combo-rc2.html
-  $1198.00 [100.0%] DJI Mini 4 Pro RC2
-  https://www.harveynorman.com.au/dji-mini-4-pro-rc-2.html
+Harvey Norman AU | ok | parsed=1 | matched=1
+  $1748.00 [91.7%] Garmin Fenix 8 51mm Solar Sapphire GPS Smart Watch - Titanium with Amp Yellow/Graphite Silicone Band
+  https://www.harveynorman.com.au/garmin-fenix-8-51mm-solar-sapphire-gps-smart-watch-titanium-with-amp-yellow-graphite-silicone-band.html
 
-JB Hi-Fi NZ | ok | parsed=10 | matched=1
-  $2075.00 [92.5%] DJI Mini 5 Pro Drone Fly More Combo Plus (DJI RC 2)
-  https://www.jbhifi.co.nz/products/dji-mini-5-pro-drone-fly-more-combo-plus-dji-rc-2
+JB Hi-Fi NZ | http_error | parsed=0 | matched=0
+  ERROR: HTTP 502
 
-Harvey Norman NZ | ok | parsed=12 | matched=4
-  $1948.00 [92.5%] DJI Mini 5 Pro Drone Fly More Combo with DJI RC 2 Remote Control - Grey
-  https://www.harveynorman.co.nz/cameras/digital-cameras/drones/dji-mini-5-pro-drone-fly-more-combo-with-dji-rc-2-remote-control-grey.html
-  $2078.00 [92.5%] DJI Mini 5 Pro Drone Fly More Combo Plus with DJI RC 2 Remote Control - Grey
-  https://www.harveynorman.co.nz/cameras/digital-cameras/drones/dji-mini-5-pro-drone-fly-more-combo-plus-with-dji-rc-2-remote-control-grey.html
-  $4623.00 [78.4%] DJI Mavic 4 Pro Drone Fly More Combo with DJI RC 2 Remote Control
-  https://www.harveynorman.co.nz/cameras/digital-cameras/drones/dji-mavic-4-pro-drone-fly-more-combo-with-dji-rc-2-remote-control.html
+Harvey Norman NZ | http_error | parsed=0 | matched=0
+  ERROR: HTTP 502
 
-Big W | no_products_parsed | parsed=0 | matched=0
+Big W | http_error | parsed=0 | matched=0
+  ERROR: HTTP 502
 
-Officeworks | ok | parsed=1 | matched=1
-  $1699.00 [92.5%] DJI Mini 5 Pro Fly More Drone Combo
-  https://www.officeworks.com.au/shop/officeworks/p/dji-mini-5-pro-fly-more-drone-combo-dj6650690
+Officeworks | ok | parsed=12 | matched=1
+  $468.00 [60.5%] Garmin Lily 2 Smartwatch Silver Grey Fabric Band
+  https://www.officeworks.com.au/shop/officeworks/p/garmin-lily-2-smartwatch-silver-grey-fabric-band-gar6129751
 
-The Good Guys | ok | parsed=1 | matched=1
-  $1449.00 [100.0%] DJI Mini 4 Pro Fly More Combo (RC 2)
-  https://www.thegoodguys.com.au/dji-mini-4-pro-fly-more-combo-rc-2-5910877
+The Good Guys | http_error | parsed=0 | matched=0
+  ERROR: HTTP 502
 
-Bunnings AU | no_products_parsed | parsed=0 | matched=0
+Bunnings AU | http_error | parsed=0 | matched=0
+  ERROR: HTTP 502
 
-Costco AU | no_products_parsed | parsed=0 | matched=0
+Costco AU | http_error | parsed=0 | matched=0
+  ERROR: HTTP 502
 
 Anaconda AU | parsed_no_match | parsed=12 | matched=0
 
-BCF | no_products_parsed | parsed=0 | matched=0
+BCF | http_error | parsed=0 | matched=0
+  ERROR: HTTP 502
 
-Noelle Leeming | ok | parsed=4 | matched=1
-  $65.00 [100.0%] DJI Mini 4 Pro Wide-Angle Lens
-  https://www.noelleeming.co.nz/p/dji-mini-4-pro-wide-angle-lens/N220842.html
+Noelle Leeming | ok | parsed=3 | matched=3
+  $1898.00 [75.7%] Garmin Fenix 8 47mm Sapphire Solar - Carbon Gray Titanium with Black Pebble Gray Band
+  https://www.noelleeming.co.nz/p/garmin-fenix-8-47mm-sapphire-solar---carbon-gray-titanium-with-black-pebble-gray-band/N231509.html
+  $1898.00 [75.7%] Garmin Fenix 8 47mm Sapphire Solar - Bare Titanium with Amp Yellow Graphite Band
+  https://www.noelleeming.co.nz/p/garmin-fenix-8-47mm-sapphire-solar---bare-titanium-with-amp-yellow-graphite-band/N231503.html
+  $2099.00 [75.7%] Garmin Fenix 8 51mm Sapphire Solar - Carbon Gray Titanium with Black Pebble Gray Band
+  https://www.noelleeming.co.nz/p/garmin-fenix-8-51mm-sapphire-solar---carbon-gray-titanium-with-black-pebble-gray-band/N231508.html
 
 PB Tech | no_products_parsed | parsed=0 | matched=0
 
-Bunnings NZ | no_products_parsed | parsed=0 | matched=0
+Bunnings NZ | http_error | parsed=0 | matched=0
+  ERROR: HTTP 502
 
-Auckland Airport | no_products_parsed | parsed=0 | matched=0
+Auckland Airport Mall | no_products_parsed | parsed=0 | matched=0
 
-Digi Direct | ok | parsed=12 | matched=5
-  $949.00 [100.0%] DJI Mini 4 Pro
-  https://www.digidirect.com.au/dji-mini-4-pro
-  $46.73 [100.0%] DJI Mini 4 Pro Wide-Angle Lens
-  https://www.digidirect.com.au/dji-mini-4-pro-wide-angle-lens
-  $1209.00 [100.0%] DJI Mini 4 Pro (DJI RC 2)
-  https://www.digidirect.com.au/dji-mini-4-pro-dji-rc-2
+Digi Direct | http_error | parsed=0 | matched=0
+  ERROR: HTTP 502
 
-Camera Pro | ok | parsed=6 | matched=5
-  $839.00 [100.0%] DJI Mini 4 Pro Drone
-  https://www.camerapro.com.au/14589-dji-mini-4-pro-drone.html
-  $1063.00 [100.0%] DJI Mini 4 Pro Drone with RC 2 Controller
-  https://www.camerapro.com.au/14247-dji-mini-4-pro-drone-with-rc-2-controller.html
-  $1275.00 [100.0%] DJI Mini 4 Pro Drone Fly More Combo with RC 2 Controller
-  https://www.camerapro.com.au/14248-dji-mini-4-pro-drone-fly-more-combo-with-rc-2-controller.html
+Camera Pro | no_products_parsed | parsed=0 | matched=0
 
 Rubber Monkey AU | parsed_no_match | parsed=12 | matched=0
 
