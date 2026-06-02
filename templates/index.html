@@ -7,18 +7,23 @@
     <h1 class="page-title">Watchlist</h1>
     <p class="page-subtitle">{{ jobs|length }} product{% if jobs|length != 1 %}s{% endif %} monitored across AU &amp; NZ</p>
   </div>
-  <div>
-    <a href="/add-scout" class="btn btn-ghost" style="margin-right:0.5rem">🔍 Availability Scout</a>
+  <div style="display:flex;gap:0.5rem">
+    <a href="/add-scout" class="btn btn-scout">🔍 Availability Scout</a>
     <a href="/add" class="btn btn-primary">+ Add Product</a>
   </div>
 </div>
 
 {% if not jobs %}
-<div class="empty-state">
-  <div style="font-size:3rem;margin-bottom:1rem">📡</div>
-  <h2>No products yet</h2>
-  <p>Add a product to start monitoring prices across 22 AU &amp; NZ retailers.</p>
-  <a href="/add" class="btn btn-primary">Add your first product</a>
+<div class="card">
+  <div class="empty-state">
+    <div class="empty-icon">📡</div>
+    <h2>No products yet</h2>
+    <p>Add a product to start monitoring prices across AU &amp; NZ retailers. Get alerted when prices drop below your target.</p>
+    <div style="display:flex;gap:0.5rem;justify-content:center">
+      <a href="/add" class="btn btn-primary">+ Add Product</a>
+      <a href="/add-scout" class="btn btn-scout">🔍 Availability Scout</a>
+    </div>
+  </div>
 </div>
 {% else %}
 <div class="card" style="padding:0;overflow:hidden">
@@ -26,7 +31,7 @@
     <thead>
       <tr>
         <th>Product</th>
-        <th>Target</th>
+        <th>Type / Target</th>
         <th>Sites</th>
         <th>Schedule</th>
         <th>Last Checked</th>
@@ -43,13 +48,14 @@
       {% set currency = 'AU$' if au_count >= nz_count else 'NZ$' %}
       <tr>
         <td>
-          <div style="font-weight:600;color:var(--text)">{{ job.product_name }}</div>
-          <div style="font-size:0.75rem;color:var(--muted);font-family:var(--mono)">ID #{{ job.id }}</div>
+          <div style="font-weight:600;color:var(--text);max-width:240px">{{ job.product_name }}</div>
+          <div style="font-size:0.72rem;color:var(--muted-light);font-family:var(--mono);margin-top:0.15rem">#{{ job.id }}</div>
         </td>
         <td>
           {% if job.job_type == 'availability_scout' %}
-            <span style="font-family:var(--mono);font-size:0.75rem;color:var(--muted)">🔍 Scout</span>
+            <span class="badge badge-purple" style="font-size:0.68rem">🔍 Scout</span>
           {% elif job.target_price %}
+            <div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.15rem">Target</div>
             <span class="price price-normal">{{ currency }}{{ "%.2f"|format(job.target_price) }}</span>
           {% else %}
             <span class="price price-muted">—</span>
@@ -58,12 +64,12 @@
         <td>
           {% set site_names = sites | site_names_from_domains %}
           <span title="{{ site_names | join(', ') }}"
-                style="font-family:var(--mono);font-size:0.8rem;cursor:help;border-bottom:1px dashed var(--border-bright)">
-            {{ sites | length }} sites ↗
+                style="font-family:var(--mono);font-size:0.8rem;color:var(--accent);text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px">
+            {{ sites | length }} sites
           </span>
         </td>
         <td>
-          <span style="font-family:var(--mono);font-size:0.8rem;color:var(--muted)">
+          <span style="font-size:0.8rem;color:var(--muted)">
             {% if job.schedule_interval == '12h' %}Every 12h
             {% elif job.schedule_interval == '24h' %}Every 24h
             {% elif job.schedule_interval == 'weekly' %}Weekly
@@ -71,11 +77,11 @@
             {% else %}{{ job.schedule_interval }}{% endif %}
           </span>
         </td>
-        <td style="font-size:0.82rem;color:var(--muted)">
+        <td style="color:var(--muted)">
           {% if job.last_run_at %}
             {{ job.last_run_at | time_ago }}
           {% else %}
-            <span style="color:var(--border-bright)">Never</span>
+            <span style="color:var(--muted-light)">Never</span>
           {% endif %}
         </td>
         <td>
@@ -85,28 +91,28 @@
             <span class="price {% if below %}price-green{% else %}price-normal{% endif %}">
               {{ currency }}{{ "%.2f"|format(job.last_lowest_price) }}
             </span>
+            {% if below %}
+              <div style="font-size:0.68rem;color:var(--green);margin-top:0.1rem">✓ below target</div>
+            {% endif %}
           {% else %}
             <span class="price price-muted">—</span>
           {% endif %}
         </td>
         <td>
           {% if job.job_type == 'availability_scout' %}
-            <span class="badge badge-green">● Scouting</span>
+            <span class="badge badge-purple">Scouting</span>
           {% elif job.alert_sent %}
-            <span class="badge badge-amber">● Alerted</span>
+            <span class="badge badge-amber">Alerted</span>
           {% else %}
-            <span class="badge badge-green">● Watching</span>
+            <span class="badge badge-green">Watching</span>
           {% endif %}
         </td>
         <td>
-          <div style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap">
-            <a href="/job/{{ job.id }}" class="btn btn-ghost" style="font-size:0.7rem;padding:0.35rem 0.7rem">View</a>
+          <div style="display:flex;gap:0.35rem;align-items:center">
+            <a href="/job/{{ job.id }}" class="btn btn-ghost" style="font-size:0.75rem;padding:0.35rem 0.7rem">View</a>
             <button
               class="btn btn-run"
-              style="font-size:0.7rem;padding:0.35rem 0.7rem"
-              hx-post="/job/{{ job.id }}/run"
-              hx-target="#run-status-{{ job.id }}"
-              hx-swap="innerHTML"
+              style="font-size:0.75rem;padding:0.35rem 0.7rem"
               onclick="handleRunNow(event, {{ job.id }})"
             >
               <span class="btn-label">▶ Run</span>
@@ -136,7 +142,7 @@ function handleRunNow(event, jobId) {
     .then(data => {
       if (data.error) {
         const status = document.getElementById('run-status-' + jobId);
-        status.innerHTML = '<span style="color:var(--red);font-size:0.75rem;font-family:var(--mono)">Error</span>';
+        status.innerHTML = '<span style="color:var(--red);font-size:0.75rem">Error</span>';
         btn.disabled = false;
         label.style.display = 'inline';
         spinner.style.display = 'none';

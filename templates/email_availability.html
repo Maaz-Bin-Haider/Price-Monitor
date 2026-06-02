@@ -2,55 +2,63 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f4f8; margin: 0; padding: 0; }
-    .wrapper { max-width: 600px; margin: 32px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
-    .header { background: #0a0a1a; padding: 32px 36px; }
-    .header h1 { color: #fff; font-size: 22px; margin: 0 0 6px; }
-    .header p { color: #6b6b8a; font-size: 13px; margin: 0; font-family: monospace; }
-    .body { padding: 28px 36px; }
-    .highlight-box { background: #eff6ff; border: 1px solid #93c5fd; border-radius: 6px; padding: 16px 20px; margin: 18px 0; }
-    .highlight-box .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #6b6b8a; margin-bottom: 4px; }
-    .highlight-box .value { font-size: 26px; font-weight: 700; color: #1d4ed8; font-family: monospace; }
-    .highlight-box .sub { font-size: 13px; color: #374151; margin-top: 2px; }
-    table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 13px; }
-    th { background: #f9fafb; text-align: left; padding: 9px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #6b7280; border-bottom: 2px solid #e5e7eb; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f3f4f6; margin: 0; padding: 24px 0; color: #111827; -webkit-font-smoothing: antialiased; }
+    .wrapper { max-width: 580px; margin: 0 auto; }
+    .header { background: #ffffff; border-radius: 10px 10px 0 0; border: 1px solid #e5e7eb; border-bottom: none; padding: 28px 32px 24px; display: flex; align-items: center; gap: 12px; }
+    .header-icon { width: 40px; height: 40px; background: #f5f3ff; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+    .header h1 { color: #111827; font-size: 18px; font-weight: 700; margin: 0 0 2px; }
+    .header p { color: #6b7280; font-size: 12px; margin: 0; }
+    .body { background: #ffffff; border: 1px solid #e5e7eb; border-top: none; border-bottom: none; padding: 0 32px 28px; }
+    .intro { font-size: 14px; color: #374151; line-height: 1.6; padding-top: 20px; margin-bottom: 16px; }
+    .highlight { background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 8px; padding: 16px 20px; margin: 16px 0; }
+    .highlight .hl-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: #6b7280; margin-bottom: 4px; }
+    .highlight .hl-price { font-size: 28px; font-weight: 700; color: #7c3aed; font-family: 'JetBrains Mono', 'Courier New', monospace; margin: 2px 0; }
+    .highlight .hl-site { font-size: 13px; color: #374151; }
+    .section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: #6b7280; margin: 20px 0 10px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background: #f9fafb; text-align: left; padding: 8px 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #6b7280; border-bottom: 1px solid #e5e7eb; }
     td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
     tr:last-child td { border-bottom: none; }
-    .price-cell { font-weight: 700; font-family: monospace; color: #1d4ed8; }
-    .buy-link { display: inline-block; background: #1d4ed8; color: #fff !important; text-decoration: none; padding: 5px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; }
-    .footer { background: #f9fafb; border-top: 1px solid #e5e7eb; padding: 18px 36px; font-size: 12px; color: #9ca3af; line-height: 1.6; }
-    .site-name { font-weight: 600; color: #111; }
-    .match-pct { color: #9ca3af; font-size: 11px; font-family: monospace; }
-    .not-found { text-align: center; padding: 32px 0; color: #6b7280; }
-    .not-found .icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .site-name { font-weight: 600; color: #111827; }
+    .product-title { color: #374151; }
+    .match-pct { font-size: 11px; color: #9ca3af; font-family: monospace; }
+    .price-cell { font-weight: 700; font-family: 'JetBrains Mono', 'Courier New', monospace; color: #7c3aed; }
+    .view-btn { display: inline-block; background: #7c3aed; color: #fff !important; text-decoration: none; padding: 5px 12px; border-radius: 5px; font-size: 12px; font-weight: 600; }
+    .not-found { text-align: center; padding: 28px 0; }
+    .not-found .nf-icon { font-size: 2rem; margin-bottom: 10px; }
+    .not-found p { color: #6b7280; font-size: 14px; }
+    .footer { background: #f9fafb; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px; padding: 16px 32px; font-size: 12px; color: #9ca3af; line-height: 1.6; }
   </style>
 </head>
 <body>
 <div class="wrapper">
   <div class="header">
-    <h1>🔍 Availability Report</h1>
-    <p>PRICE MONITOR · Availability Scout</p>
+    <div class="header-icon">🔍</div>
+    <div>
+      <h1>Availability Report</h1>
+      <p>Price Monitor · Availability Scout</p>
+    </div>
   </div>
   <div class="body">
-    <p style="font-size:15px;color:#111;margin-bottom:16px">
+    <p class="intro">
       Here are the results for <strong>{{ product_name }}</strong> across your selected sites.
     </p>
 
     {% if available_sites %}
-      <div class="highlight-box">
-        <div class="label">Lowest price found</div>
-        <div class="value">${{ "%.2f"|format(lowest_price) }}</div>
-        <div class="sub">at {{ lowest_site }}
+      <div class="highlight">
+        <div class="hl-label">Lowest price found</div>
+        <div class="hl-price">${{ "%.2f"|format(lowest_price) }}</div>
+        <div class="hl-site">
+          at <strong>{{ lowest_site }}</strong>
           {% if lowest_link %}
-            &nbsp;— <a href="{{ lowest_link }}" style="color:#1d4ed8">View listing ↗</a>
+            &nbsp;— <a href="{{ lowest_link }}" style="color:#7c3aed">View listing ↗</a>
           {% endif %}
         </div>
       </div>
 
-      <h3 style="font-size:13px;text-transform:uppercase;letter-spacing:0.08em;color:#6b7280;margin:24px 0 8px">
-        All sites where {{ product_name }} is available ({{ available_sites|length }} found)
-      </h3>
+      <div class="section-title">{{ available_sites|length }} site{% if available_sites|length != 1 %}s{% endif %} found</div>
       <table>
         <thead>
           <tr>
@@ -65,13 +73,13 @@
           <tr>
             <td class="site-name">{{ item.site_name }}</td>
             <td>
-              {{ item.title[:70] }}{% if item.title|length > 70 %}…{% endif %}
-              <br><span class="match-pct">{{ item.match_score }}% match</span>
+              <div class="product-title">{{ item.title[:65] }}{% if item.title|length > 65 %}…{% endif %}</div>
+              <div class="match-pct">{{ item.match_score }}% match</div>
             </td>
             <td class="price-cell">${{ "%.2f"|format(item.price) }}</td>
             <td>
               {% if item.link %}
-                <a href="{{ item.link }}" class="buy-link">View ↗</a>
+                <a href="{{ item.link }}" class="view-btn">View ↗</a>
               {% endif %}
             </td>
           </tr>
@@ -80,17 +88,14 @@
       </table>
     {% else %}
       <div class="not-found">
-        <div class="icon">😔</div>
-        <p style="font-size:15px;color:#374151;font-weight:600">No listings found</p>
-        <p style="font-size:13px;color:#6b7280">
-          <strong>{{ product_name }}</strong> was not found on any of the selected sites at this time.
-          We'll check again on your next scheduled run.
-        </p>
+        <div class="nf-icon">🕵️</div>
+        <p><strong>{{ product_name }}</strong> was not found on any of the selected sites at this time.</p>
+        <p style="margin-top:6px;font-size:12px;color:#9ca3af">We'll check again on your next scheduled run.</p>
       </div>
     {% endif %}
   </div>
   <div class="footer">
-    This is a scheduled availability report from Price Monitor. You will receive this report on each scheduled run.
+    This is a scheduled availability report from Price Monitor. You will receive this on each scheduled run.
   </div>
 </div>
 </body>

@@ -7,9 +7,9 @@ from config import settings
 # the result score is penalised heavily (dropped to 40%).
 ACCESSORY_KEYWORDS = [
     # Physical accessories
-    "cable", "mount", "bracket", "adaptor", "adapter", "case", "cover",
+    "cable", "mount", "bracket", "adaptor", "adapter", "case", "cover","Power Plug",
     "stand", "strap", "charger", "battery", "sleeve", "bag", "pouch",
-    "hub", "dock", "skin", "bumper", "holster",
+    "hub", "dock", "skin", "bumper", "holster","Power Lead", "Propellers",
     # Audio accessories
     "lens", "wide-angle lens", "wide angle lens", "nd filter", "filter set", "filters",
     "filter kit", "polarizer", "cpl filter", "telephoto", "lens cap",
@@ -24,7 +24,7 @@ ACCESSORY_KEYWORDS = [
     "charging cable", "data cable", "extension cable",
     # Mounts / networking accessories
     "pole adaptor", "edge protector", "actuated cable", "power supply",
-    "wall mount", "ceiling mount", "roof mount", "pipe mount",
+    "wall mount", "ceiling mount", "roof mount", "pipe mount","Extension",
     # General replacement parts
     "replacement", "spare part", "repair kit",
 ]

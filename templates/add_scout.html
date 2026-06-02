@@ -5,124 +5,119 @@
 <div class="page-header">
   <div>
     <h1 class="page-title">Availability Scout</h1>
-    <p class="page-subtitle">Search for a product across sites and get an emailed list of where it's available</p>
+    <p class="page-subtitle">Search for a product across sites and receive an emailed report with prices and direct links</p>
   </div>
   <a href="/" class="btn btn-ghost">← Back</a>
 </div>
 
+{% if error %}
+<div style="background:var(--red-light);border:1px solid var(--red-mid);border-radius:var(--radius-sm);padding:0.75rem 1rem;margin-bottom:1.25rem;color:var(--red);font-size:0.85rem">
+  ⚠ {{ error }}
+</div>
+{% endif %}
+
 <form method="post" action="/add-scout" onsubmit="return validateForm()">
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;align-items:start">
 
-    <!-- Left column: product details -->
-    <div>
-      <div class="card">
-        <div class="card-header">
-          <div style="font-family:var(--mono);font-size:0.75rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted)">
-            Scout Details
-          </div>
-        </div>
+    <!-- Left: scout details -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-label">Scout Details</div>
+      </div>
 
-        <div class="form-group">
-          <label for="product_name">Product Name</label>
-          <input type="text" id="product_name" name="product_name"
-                 placeholder="e.g. Sony WH-1000XM5 Headphones"
-                 required maxlength="500">
-        </div>
+      <div class="form-group">
+        <label for="product_name">Product Name</label>
+        <input type="text" id="product_name" name="product_name"
+               placeholder="e.g. Sony WH-1000XM5 Headphones"
+               required maxlength="500">
+      </div>
 
-        <div class="form-group">
-          <label for="user_email">Report Email</label>
-          <input type="email" id="user_email" name="user_email"
-                 placeholder="you@example.com" required>
-          <div style="font-size:0.75rem;color:var(--muted);margin-top:0.35rem;font-family:var(--mono)">
-            An availability report will be emailed after each scheduled run.
-          </div>
+      <div class="form-group">
+        <label for="user_email">Report Email</label>
+        <input type="email" id="user_email" name="user_email"
+               placeholder="you@example.com" required>
+        <div style="font-size:0.75rem;color:var(--muted);margin-top:0.35rem">
+          An availability report will be emailed after every scheduled run.
         </div>
+      </div>
 
-        <div class="form-group">
-          <label for="schedule_interval">Check Frequency</label>
-          <select id="schedule_interval" name="schedule_interval">
-            <option value="12h">Every 12 hours</option>
-            <option value="24h" selected>Every 24 hours</option>
-            <option value="weekly">Once a week (Monday)</option>
-            <option value="monthly">Once a month (1st)</option>
-          </select>
-        </div>
+      <div class="form-group" style="margin-bottom:1.25rem">
+        <label for="schedule_interval">Check Frequency</label>
+        <select id="schedule_interval" name="schedule_interval">
+          <option value="12h">Every 12 hours</option>
+          <option value="24h" selected>Every 24 hours</option>
+          <option value="weekly">Once a week (Monday)</option>
+          <option value="monthly">Once a month (1st)</option>
+        </select>
+      </div>
 
-        <div style="background:var(--surface-alt,#f9fafb);border:1px solid var(--border);border-radius:6px;padding:0.75rem 1rem;margin-top:0.5rem;font-size:0.78rem;color:var(--muted);font-family:var(--mono)">
-          ℹ️ No target price needed — the scout emails you <em>all</em> sites where the product is found, with prices and direct links.
-        </div>
+      <div class="info-box">
+        ℹ️ No target price needed — the scout emails you <em>all</em> sites where the product is available, along with their current prices and direct links to buy.
       </div>
     </div>
 
-    <!-- Right column: site picker -->
-    <div>
-      <div class="card">
-        <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
-          <div style="font-family:var(--mono);font-size:0.75rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted)">
-            Select Sites
+    <!-- Right: site picker -->
+    <div class="card">
+      <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
+        <div class="card-label">Select Sites</div>
+        <span id="site-count" style="font-family:var(--mono);font-size:0.75rem;color:var(--accent);font-weight:600">0 selected</span>
+      </div>
+
+      <div id="site-error" style="display:none;background:var(--red-light);border:1px solid var(--red-mid);border-radius:var(--radius-sm);padding:0.55rem 0.8rem;margin-bottom:1rem;color:var(--red);font-size:0.8rem">
+        ⚠ Please select at least one site
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
+        <!-- AU Sites -->
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.6rem">
+            <span style="font-size:0.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em">🇦🇺 Australia</span>
+            <button type="button" class="btn btn-ghost" style="font-size:0.68rem;padding:0.2rem 0.5rem"
+                    onclick="toggleAll('au')">All</button>
           </div>
-          <span id="site-count" style="font-family:var(--mono);font-size:0.75rem;color:var(--accent)">0 selected</span>
+          {% for site in sites_au %}
+          <label style="display:flex;align-items:center;gap:0.5rem;padding:0.3rem 0;cursor:pointer;font-size:0.82rem;color:var(--text-secondary);font-weight:400;text-transform:none;letter-spacing:0">
+            <input type="checkbox" name="selected_sites" value="{{ site.domain }}"
+                   class="site-cb au-cb" onchange="updateCount()"
+                   style="width:14px;height:14px;accent-color:var(--accent);flex-shrink:0">
+            <span>{{ site.name }}</span>
+            <span style="margin-left:auto;font-size:0.62rem;font-family:var(--mono);color:var(--muted-light)">
+              {% if site.tier == 'heavy' %}●●●{% elif site.tier == 'medium' %}●●○{% else %}●○○{% endif %}
+            </span>
+          </label>
+          {% endfor %}
         </div>
 
-        <div id="site-error" style="display:none;color:var(--red);font-size:0.8rem;margin-bottom:1rem;font-family:var(--mono)">
-          ⚠ Select at least one site
-        </div>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
-          <!-- AU Sites -->
-          <div>
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem">
-              <span style="font-family:var(--mono);font-size:0.7rem;letter-spacing:0.08em;color:var(--muted);text-transform:uppercase">
-                🇦🇺 Australia
-              </span>
-              <button type="button" class="btn btn-ghost" style="font-size:0.65rem;padding:0.2rem 0.5rem"
-                      onclick="toggleAll('au')">All AU</button>
-            </div>
-            {% for site in sites_au %}
-            <label style="display:flex;align-items:center;gap:0.5rem;padding:0.35rem 0;cursor:pointer;font-family:var(--sans);text-transform:none;letter-spacing:0;font-size:0.82rem;color:var(--text)">
-              <input type="checkbox" name="selected_sites" value="{{ site.domain }}"
-                     class="site-cb au-cb" onchange="updateCount()"
-                     style="width:14px;height:14px;accent-color:var(--accent)">
-              {{ site.name }}
-              <span style="margin-left:auto;font-size:0.65rem;font-family:var(--mono);color:var(--muted)">
-                {% if site.tier == 'heavy' %}●●●{% elif site.tier == 'medium' %}●●○{% else %}●○○{% endif %}
-              </span>
-            </label>
-            {% endfor %}
+        <!-- NZ Sites -->
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.6rem">
+            <span style="font-size:0.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em">🇳🇿 New Zealand</span>
+            <button type="button" class="btn btn-ghost" style="font-size:0.68rem;padding:0.2rem 0.5rem"
+                    onclick="toggleAll('nz')">All</button>
           </div>
-
-          <!-- NZ Sites -->
-          <div>
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem">
-              <span style="font-family:var(--mono);font-size:0.7rem;letter-spacing:0.08em;color:var(--muted);text-transform:uppercase">
-                🇳🇿 New Zealand
-              </span>
-              <button type="button" class="btn btn-ghost" style="font-size:0.65rem;padding:0.2rem 0.5rem"
-                      onclick="toggleAll('nz')">All NZ</button>
-            </div>
-            {% for site in sites_nz %}
-            <label style="display:flex;align-items:center;gap:0.5rem;padding:0.35rem 0;cursor:pointer;font-family:var(--sans);text-transform:none;letter-spacing:0;font-size:0.82rem;color:var(--text)">
-              <input type="checkbox" name="selected_sites" value="{{ site.domain }}"
-                     class="site-cb nz-cb" onchange="updateCount()"
-                     style="width:14px;height:14px;accent-color:var(--accent)">
-              {{ site.name }}
-              <span style="margin-left:auto;font-size:0.65rem;font-family:var(--mono);color:var(--muted)">
-                {% if site.tier == 'heavy' %}●●●{% elif site.tier == 'medium' %}●●○{% else %}●○○{% endif %}
-              </span>
-            </label>
-            {% endfor %}
-          </div>
+          {% for site in sites_nz %}
+          <label style="display:flex;align-items:center;gap:0.5rem;padding:0.3rem 0;cursor:pointer;font-size:0.82rem;color:var(--text-secondary);font-weight:400;text-transform:none;letter-spacing:0">
+            <input type="checkbox" name="selected_sites" value="{{ site.domain }}"
+                   class="site-cb nz-cb" onchange="updateCount()"
+                   style="width:14px;height:14px;accent-color:var(--accent);flex-shrink:0">
+            <span>{{ site.name }}</span>
+            <span style="margin-left:auto;font-size:0.62rem;font-family:var(--mono);color:var(--muted-light)">
+              {% if site.tier == 'heavy' %}●●●{% elif site.tier == 'medium' %}●●○{% else %}●○○{% endif %}
+            </span>
+          </label>
+          {% endfor %}
         </div>
+      </div>
 
-        <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);font-size:0.72rem;color:var(--muted);font-family:var(--mono)">
-          ●●● Heavy (JS render + proxy) &nbsp;·&nbsp; ●●○ Medium (JS render) &nbsp;·&nbsp; ●○○ Light (proxy only)
-        </div>
+      <hr class="divider">
+      <div style="font-size:0.72rem;color:var(--muted-light);font-family:var(--mono)">
+        ●●● Heavy (JS + proxy) &nbsp;·&nbsp; ●●○ Medium (JS) &nbsp;·&nbsp; ●○○ Light (proxy)
       </div>
     </div>
   </div>
 
-  <div style="margin-top:1.5rem;display:flex;gap:0.75rem">
-    <button type="submit" class="btn btn-primary" style="padding:0.65rem 2rem">🔍 Start Scouting</button>
+  <div style="margin-top:1.25rem;display:flex;gap:0.65rem">
+    <button type="submit" class="btn btn-scout" style="padding:0.6rem 1.75rem">🔍 Start Scouting</button>
     <a href="/" class="btn btn-ghost">Cancel</a>
   </div>
 </form>
@@ -132,14 +127,12 @@ function updateCount() {
   const checked = document.querySelectorAll('.site-cb:checked').length;
   document.getElementById('site-count').textContent = checked + ' selected';
 }
-
 function toggleAll(geo) {
   const cbs = document.querySelectorAll('.' + geo + '-cb');
   const allChecked = Array.from(cbs).every(cb => cb.checked);
   cbs.forEach(cb => { cb.checked = !allChecked; });
   updateCount();
 }
-
 function validateForm() {
   const checked = document.querySelectorAll('.site-cb:checked').length;
   if (checked === 0) {

@@ -7,18 +7,24 @@
 {% set nz_count = sites | selectattr_geo('nz') | list | length %}
 {% set currency = 'AU$' if au_count >= nz_count else 'NZ$' %}
 
+<!-- Page header -->
 <div class="page-header">
   <div>
-    <a href="/" style="font-family:var(--mono);font-size:0.75rem;color:var(--muted);text-decoration:none">← Dashboard</a>
-    <h1 class="page-title" style="margin-top:0.4rem">{{ job.product_name }}</h1>
-    <p class="page-subtitle">Watchlist entry #{{ job.id }}</p>
+    <a href="/" style="font-size:0.8rem;color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:0.3rem;margin-bottom:0.5rem">
+      ← Dashboard
+    </a>
+    <h1 class="page-title">{{ job.product_name }}</h1>
+    <p class="page-subtitle">
+      {% if job.job_type == 'availability_scout' %}
+        <span class="badge badge-purple" style="font-size:0.68rem">🔍 Availability Scout</span>
+      {% else %}
+        <span class="badge badge-blue" style="font-size:0.68rem">🎯 Price Watch</span>
+      {% endif %}
+      &nbsp; Watchlist entry #{{ job.id }}
+    </p>
   </div>
-  <div style="display:flex;gap:0.5rem;align-items:center">
-    <button
-      class="btn btn-run"
-      id="run-btn"
-      onclick="handleRunNow({{ job.id }})"
-    >
+  <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
+    <button class="btn btn-run" id="run-btn" onclick="handleRunNow({{ job.id }})">
       <span id="run-label">▶ Run Now</span>
       <span id="run-spinner" class="spinner" style="display:none"></span>
     </button>
@@ -30,82 +36,99 @@
   </div>
 </div>
 
-<!-- Job Summary Card -->
-<div class="card" style="margin-bottom:1.5rem">
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1.5rem">
-
-    <div>
-      <div style="font-family:var(--mono);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:0.4rem">
-        {% if job.job_type == 'availability_scout' %}Mode{% else %}Target Price{% endif %}
-      </div>
-      {% if job.job_type == 'availability_scout' %}
-        <div class="price price-normal" style="font-size:1rem;font-family:var(--mono)">🔍 Availability Scout</div>
-      {% else %}
-        <div class="price price-normal" style="font-size:1.4rem">{{ currency }}{{ "%.2f"|format(job.target_price) }}</div>
-      {% endif %}
-    </div>
-
-    <div>
-      <div style="font-family:var(--mono);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:0.4rem">Schedule</div>
-      <div style="font-family:var(--mono);font-size:0.9rem">
-        {% if job.schedule_interval == '12h' %}Every 12 hours
-        {% elif job.schedule_interval == '24h' %}Every 24 hours
-        {% elif job.schedule_interval == 'weekly' %}Weekly (Mon)
-        {% elif job.schedule_interval == 'monthly' %}Monthly (1st)
-        {% else %}{{ job.schedule_interval }}{% endif %}
-      </div>
-    </div>
-
-    <div>
-      <div style="font-family:var(--mono);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:0.4rem">Sites</div>
-      <div style="font-family:var(--mono);font-size:0.9rem">{{ sites | length }} sites</div>
-    </div>
-
-    <div>
-      <div style="font-family:var(--mono);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:0.4rem">Last Check</div>
-      <div style="font-size:0.875rem;color:var(--muted)">
-        {% if job.last_run_at %}{{ job.last_run_at | time_ago }}{% else %}Never{% endif %}
-      </div>
-    </div>
-
-    <div>
-      <div style="font-family:var(--mono);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:0.4rem">Next Check</div>
-      <div style="font-size:0.875rem;color:var(--muted)">
-        {% if job.next_run_at %}{{ job.next_run_at | datetime_fmt }}{% else %}—{% endif %}
-      </div>
-    </div>
-
-    <div>
-      <div style="font-family:var(--mono);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:0.4rem">Alert State</div>
-      {% if job.alert_sent %}
-        <span class="badge badge-amber">● Alerted</span>
-      {% else %}
-        <span class="badge badge-green">● Watching</span>
-      {% endif %}
-    </div>
-
-    <div>
-      <div style="font-family:var(--mono);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:0.4rem">Alert Email</div>
-      <div style="font-size:0.82rem;color:var(--muted);word-break:break-all">{{ job.user_email }}</div>
-    </div>
-
-  </div>
-</div>
-
 <!-- Run status placeholder -->
 <div id="run-status-{{ job.id }}" style="margin-bottom:1rem"></div>
 
+<!-- Stats row -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem;margin-bottom:1.5rem">
+
+  <div class="card" style="padding:1.1rem 1.25rem">
+    <div class="stat-label">
+      {% if job.job_type == 'availability_scout' %}Mode{% else %}Target Price{% endif %}
+    </div>
+    {% if job.job_type == 'availability_scout' %}
+      <div style="font-size:0.95rem;font-weight:600;color:var(--purple);margin-top:0.2rem">🔍 Scout</div>
+    {% elif job.target_price %}
+      <div class="stat-value" style="margin-top:0.2rem">{{ currency }}{{ "%.2f"|format(job.target_price) }}</div>
+    {% else %}
+      <div class="stat-value" style="margin-top:0.2rem;color:var(--muted-light)">—</div>
+    {% endif %}
+  </div>
+
+  <div class="card" style="padding:1.1rem 1.25rem">
+    <div class="stat-label">Lowest Found</div>
+    {% if job.last_lowest_price %}
+      {% set is_scout = job.job_type == 'availability_scout' %}
+      {% set below = not is_scout and job.target_price and job.last_lowest_price <= job.target_price %}
+      <div class="stat-value {% if below %}green{% endif %}" style="margin-top:0.2rem">
+        {{ currency }}{{ "%.2f"|format(job.last_lowest_price) }}
+      </div>
+      {% if below %}<div style="font-size:0.7rem;color:var(--green);margin-top:0.15rem">✓ below target</div>{% endif %}
+    {% else %}
+      <div class="stat-value" style="margin-top:0.2rem;color:var(--muted-light)">—</div>
+    {% endif %}
+  </div>
+
+  <div class="card" style="padding:1.1rem 1.25rem">
+    <div class="stat-label">Schedule</div>
+    <div style="font-size:0.9rem;font-weight:600;color:var(--text);margin-top:0.2rem">
+      {% if job.schedule_interval == '12h' %}Every 12h
+      {% elif job.schedule_interval == '24h' %}Every 24h
+      {% elif job.schedule_interval == 'weekly' %}Weekly (Mon)
+      {% elif job.schedule_interval == 'monthly' %}Monthly (1st)
+      {% else %}{{ job.schedule_interval }}{% endif %}
+    </div>
+  </div>
+
+  <div class="card" style="padding:1.1rem 1.25rem">
+    <div class="stat-label">Sites</div>
+    <div style="font-size:0.9rem;font-weight:600;color:var(--text);margin-top:0.2rem">{{ sites | length }} selected</div>
+  </div>
+
+  <div class="card" style="padding:1.1rem 1.25rem">
+    <div class="stat-label">Last Check</div>
+    <div style="font-size:0.85rem;color:var(--muted);margin-top:0.2rem">
+      {% if job.last_run_at %}{{ job.last_run_at | time_ago }}{% else %}Never{% endif %}
+    </div>
+  </div>
+
+  <div class="card" style="padding:1.1rem 1.25rem">
+    <div class="stat-label">Next Check</div>
+    <div style="font-size:0.8rem;color:var(--muted);margin-top:0.2rem">
+      {% if job.next_run_at %}{{ job.next_run_at | datetime_fmt }}{% else %}—{% endif %}
+    </div>
+  </div>
+
+  <div class="card" style="padding:1.1rem 1.25rem">
+    <div class="stat-label">Status</div>
+    <div style="margin-top:0.35rem">
+      {% if job.job_type == 'availability_scout' %}
+        <span class="badge badge-purple">Scouting</span>
+      {% elif job.alert_sent %}
+        <span class="badge badge-amber">Alerted</span>
+      {% else %}
+        <span class="badge badge-green">Watching</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card" style="padding:1.1rem 1.25rem">
+    <div class="stat-label">Alert Email</div>
+    <div style="font-size:0.78rem;color:var(--muted);margin-top:0.2rem;word-break:break-all">{{ job.user_email }}</div>
+  </div>
+
+</div>
+
 <!-- Run History -->
-<div style="margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between">
-  <h2 style="font-family:var(--mono);font-size:0.9rem;letter-spacing:0.05em;color:var(--muted);text-transform:uppercase">
-    Run History
-  </h2>
-  <span style="font-family:var(--mono);font-size:0.75rem;color:var(--muted)">{{ runs | length }} runs</span>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.85rem">
+  <h2 style="font-size:1rem;font-weight:600;color:var(--text)">Run History</h2>
+  <span style="font-size:0.8rem;color:var(--muted)">{{ runs | length }} runs</span>
 </div>
 
 {% if not runs %}
-<div class="card" style="text-align:center;padding:3rem">
-  <p style="color:var(--muted);font-family:var(--mono);font-size:0.85rem">No runs yet — click Run Now to check prices immediately.</p>
+<div class="card" style="text-align:center;padding:3rem 2rem">
+  <div style="font-size:1.5rem;margin-bottom:0.75rem">🕐</div>
+  <p style="color:var(--muted);font-size:0.875rem">No runs yet — click <strong>Run Now</strong> to check prices immediately.</p>
 </div>
 {% else %}
 <div class="card" style="padding:0;overflow:hidden">
@@ -114,9 +137,9 @@
       <tr>
         <th>Date / Time</th>
         <th>Type</th>
-        <th>Sites</th>
+        <th>Sites Checked</th>
         <th>Lowest Found</th>
-        <th>Alert</th>
+        <th>Email Sent</th>
         <th>Details</th>
       </tr>
     </thead>
@@ -126,7 +149,7 @@
       {% set sites_checked = run.sites_checked | from_json %}
       <tr>
         <td>
-          <span style="font-family:var(--mono);font-size:0.8rem">
+          <span style="font-family:var(--mono);font-size:0.8rem;color:var(--text)">
             {{ run.started_at | datetime_fmt }}
           </span>
         </td>
@@ -142,7 +165,9 @@
         </td>
         <td>
           {% if run.lowest_price %}
-            <span class="price {% if job.job_type != 'availability_scout' and run.lowest_price <= job.target_price %}price-green{% else %}price-normal{% endif %}">
+            {% set is_scout = job.job_type == 'availability_scout' %}
+            {% set below = not is_scout and job.target_price and run.lowest_price <= job.target_price %}
+            <span class="price {% if below %}price-green{% else %}price-normal{% endif %}">
               {{ currency }}{{ "%.2f"|format(run.lowest_price) }}
             </span>
             {% if run.lowest_site %}
@@ -156,52 +181,54 @@
           {% if run.alert_triggered %}
             <span class="badge badge-green">✓ Sent</span>
           {% else %}
-            <span style="color:var(--muted);font-size:0.82rem">—</span>
+            <span style="color:var(--muted-light);font-size:0.82rem">—</span>
           {% endif %}
         </td>
         <td>
           {% if results %}
           <button
             class="btn btn-ghost"
-            style="font-size:0.68rem;padding:0.3rem 0.6rem"
+            style="font-size:0.72rem;padding:0.3rem 0.65rem"
             onclick="toggleDetails('run-{{ run.id }}')"
           >
-            Expand ▾
+            <span id="toggle-label-{{ run.id }}">Expand ▾</span>
           </button>
           {% endif %}
         </td>
       </tr>
       {% if results %}
-      <tr id="run-{{ run.id }}" style="display:none;background:rgba(0,0,0,0.3)">
-        <td colspan="6" style="padding:0">
-          <table style="width:100%;background:transparent">
+      <tr id="run-{{ run.id }}" style="display:none">
+        <td colspan="6" style="padding:0;background:var(--surface-alt)">
+          <table style="width:100%">
             <thead>
-              <tr style="background:rgba(0,0,0,0.2)">
-                <th style="padding:0.5rem 1.5rem">Site</th>
-                <th>Matched Title</th>
-                <th>Price</th>
-                <th>Match %</th>
-                <th>Link</th>
+              <tr style="background:var(--bg)">
+                <th style="padding:0.55rem 1.5rem;font-size:0.68rem">Site</th>
+                <th style="font-size:0.68rem">Matched Title</th>
+                <th style="font-size:0.68rem">Price</th>
+                <th style="font-size:0.68rem">Match %</th>
+                <th style="font-size:0.68rem">Link</th>
               </tr>
             </thead>
             <tbody>
               {% for r in results %}
-              <tr>
-                <td style="padding:0.6rem 1.5rem;font-size:0.8rem;font-family:var(--mono)">{{ r.site_name }}</td>
-                <td style="font-size:0.8rem;max-width:300px">
-                  {{ r.title[:60] }}{% if r.title|length > 60 %}…{% endif %}
+              <tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:0.6rem 1.5rem;font-size:0.8rem;font-weight:600;color:var(--text)">{{ r.site_name }}</td>
+                <td style="font-size:0.8rem;max-width:280px;color:var(--text-secondary)">
+                  {{ r.title[:65] }}{% if r.title|length > 65 %}…{% endif %}
                 </td>
                 <td>
-                  <span class="price {% if job.job_type != 'availability_scout' and r.price <= job.target_price %}price-green{% else %}price-normal{% endif %}" style="font-size:0.85rem">
+                  {% set is_scout = job.job_type == 'availability_scout' %}
+                  {% set r_below = not is_scout and job.target_price and r.price <= job.target_price %}
+                  <span class="price {% if r_below %}price-green{% else %}price-normal{% endif %}" style="font-size:0.82rem">
                     {{ currency }}{{ "%.2f"|format(r.price) }}
                   </span>
                 </td>
                 <td>
-                  <span style="font-family:var(--mono);font-size:0.78rem;color:var(--muted)">{{ r.match_score }}%</span>
+                  <span style="font-family:var(--mono);font-size:0.75rem;color:var(--muted)">{{ r.match_score }}%</span>
                 </td>
                 <td>
-                  <a href="{{ r.link }}" target="_blank" class="btn btn-ghost" style="font-size:0.68rem;padding:0.25rem 0.5rem">
-                    Buy ↗
+                  <a href="{{ r.link }}" target="_blank" class="btn btn-ghost" style="font-size:0.7rem;padding:0.25rem 0.55rem">
+                    View ↗
                   </a>
                 </td>
               </tr>
@@ -220,13 +247,14 @@
 <script>
 function toggleDetails(id) {
   const row = document.getElementById(id);
-  const btn = row.previousElementSibling.querySelector('button');
+  const runId = id.replace('run-', '');
+  const label = document.getElementById('toggle-label-' + runId);
   if (row.style.display === 'none') {
     row.style.display = 'table-row';
-    btn.textContent = 'Collapse ▴';
+    label.textContent = 'Collapse ▴';
   } else {
     row.style.display = 'none';
-    btn.textContent = 'Expand ▾';
+    label.textContent = 'Expand ▾';
   }
 }
 
@@ -243,7 +271,7 @@ function handleRunNow(jobId) {
     .then(data => {
       if (data.error) {
         const status = document.getElementById('run-status-' + jobId);
-        status.innerHTML = '<div class="card" style="background:var(--red-dim);border-color:rgba(248,113,113,0.3);padding:0.75rem 1rem;margin-bottom:1rem"><span style="color:var(--red);font-family:var(--mono);font-size:0.82rem">Error: ' + data.error + '</span></div>';
+        status.innerHTML = '<div class="card" style="background:var(--red-light);border-color:var(--red-mid);padding:0.75rem 1rem;margin-bottom:1rem"><span style="color:var(--red);font-size:0.82rem">Error: ' + data.error + '</span></div>';
         btn.disabled = false;
         label.style.display = 'inline';
         spinner.style.display = 'none';
@@ -251,7 +279,7 @@ function handleRunNow(jobId) {
         window.location.href = '/job/' + data.job_id;
       }
     })
-    .catch(err => {
+    .catch(() => {
       btn.disabled = false;
       label.style.display = 'inline';
       spinner.style.display = 'none';

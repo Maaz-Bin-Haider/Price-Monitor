@@ -4,130 +4,127 @@
 {% block content %}
 <div class="page-header">
   <div>
+    <a href="/job/{{ job.id }}" style="font-size:0.8rem;color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:0.3rem;margin-bottom:0.5rem">
+      ← Back to Detail
+    </a>
     <h1 class="page-title">Edit Product</h1>
     <p class="page-subtitle">{{ job.product_name }}</p>
   </div>
-  <a href="/job/{{ job.id }}" class="btn btn-ghost">← Back</a>
 </div>
 
 {% set current_sites = job.selected_sites | from_json %}
 
 <form method="post" action="/job/{{ job.id }}/edit" onsubmit="return validateForm()">
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;align-items:start">
 
     <!-- Left: product details -->
-    <div>
-      <div class="card">
-        <div class="card-header">
-          <div style="font-family:var(--mono);font-size:0.75rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted)">
-            Product Details
-          </div>
-        </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-label">Product Details</div>
+      </div>
 
-        <div class="form-group">
-          <label for="product_name">Product Name</label>
-          <input type="text" id="product_name" name="product_name"
-                 value="{{ job.product_name }}" required maxlength="500">
-        </div>
+      <div class="form-group">
+        <label for="product_name">Product Name</label>
+        <input type="text" id="product_name" name="product_name"
+               value="{{ job.product_name }}" required maxlength="500">
+      </div>
 
-        <div class="form-group">
-          {% if job.job_type != 'availability_scout' %}
+      <div class="form-group">
+        {% if job.job_type != 'availability_scout' %}
           <label for="target_price">Target Price (AUD/NZD)</label>
           <input type="number" id="target_price" name="target_price"
                  value="{{ job.target_price }}" step="0.01" min="0.01" required>
-          {% else %}
-          <div style="font-family:var(--mono);font-size:0.78rem;color:var(--muted);padding:0.5rem 0">
+        {% else %}
+          <div class="info-box">
             🔍 Availability Scout — no target price required.
           </div>
           <input type="hidden" name="target_price" value="">
-          {% endif %}
-        </div>
+        {% endif %}
+      </div>
 
-        <div class="form-group">
-          <label for="user_email">Alert Email</label>
-          <input type="email" id="user_email" name="user_email"
-                 value="{{ job.user_email }}" required>
-        </div>
+      <div class="form-group">
+        <label for="user_email">Alert Email</label>
+        <input type="email" id="user_email" name="user_email"
+               value="{{ job.user_email }}" required>
+      </div>
 
-        <div class="form-group">
-          <label for="schedule_interval">Check Frequency</label>
-          <select id="schedule_interval" name="schedule_interval">
-            <option value="12h" {% if job.schedule_interval == '12h' %}selected{% endif %}>Every 12 hours</option>
-            <option value="24h" {% if job.schedule_interval == '24h' %}selected{% endif %}>Every 24 hours</option>
-            <option value="weekly" {% if job.schedule_interval == 'weekly' %}selected{% endif %}>Once a week (Monday)</option>
-            <option value="monthly" {% if job.schedule_interval == 'monthly' %}selected{% endif %}>Once a month (1st)</option>
-          </select>
-        </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label for="schedule_interval">Check Frequency</label>
+        <select id="schedule_interval" name="schedule_interval">
+          <option value="12h" {% if job.schedule_interval == '12h' %}selected{% endif %}>Every 12 hours</option>
+          <option value="24h" {% if job.schedule_interval == '24h' %}selected{% endif %}>Every 24 hours</option>
+          <option value="weekly" {% if job.schedule_interval == 'weekly' %}selected{% endif %}>Once a week (Monday)</option>
+          <option value="monthly" {% if job.schedule_interval == 'monthly' %}selected{% endif %}>Once a month (1st)</option>
+        </select>
       </div>
     </div>
 
     <!-- Right: site picker -->
-    <div>
-      <div class="card">
-        <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
-          <div style="font-family:var(--mono);font-size:0.75rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted)">
-            Select Sites
+    <div class="card">
+      <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
+        <div class="card-label">Select Sites</div>
+        <span id="site-count" style="font-family:var(--mono);font-size:0.75rem;color:var(--accent);font-weight:600">
+          {{ current_sites | length }} selected
+        </span>
+      </div>
+
+      <div id="site-error" style="display:none;background:var(--red-light);border:1px solid var(--red-mid);border-radius:var(--radius-sm);padding:0.55rem 0.8rem;margin-bottom:1rem;color:var(--red);font-size:0.8rem">
+        ⚠ Please select at least one site
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
+        <!-- AU Sites -->
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.6rem">
+            <span style="font-size:0.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em">🇦🇺 Australia</span>
+            <button type="button" class="btn btn-ghost" style="font-size:0.68rem;padding:0.2rem 0.5rem"
+                    onclick="toggleAll('au')">All</button>
           </div>
-          <span id="site-count" style="font-family:var(--mono);font-size:0.75rem;color:var(--accent)">
-            {{ current_sites | length }} selected
-          </span>
+          {% for site in sites_au %}
+          <label style="display:flex;align-items:center;gap:0.5rem;padding:0.3rem 0;cursor:pointer;font-size:0.82rem;color:var(--text-secondary);font-weight:400;text-transform:none;letter-spacing:0">
+            <input type="checkbox" name="selected_sites" value="{{ site.domain }}"
+                   class="site-cb au-cb" onchange="updateCount()"
+                   {% if site.domain in current_sites %}checked{% endif %}
+                   style="width:14px;height:14px;accent-color:var(--accent);flex-shrink:0">
+            <span>{{ site.name }}</span>
+            <span style="margin-left:auto;font-size:0.62rem;font-family:var(--mono);color:var(--muted-light)">
+              {% if site.tier == 'heavy' %}●●●{% elif site.tier == 'medium' %}●●○{% else %}●○○{% endif %}
+            </span>
+          </label>
+          {% endfor %}
         </div>
 
-        <div id="site-error" style="display:none;color:var(--red);font-size:0.8rem;margin-bottom:1rem;font-family:var(--mono)">
-          ⚠ Select at least one site
-        </div>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
-          <div>
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem">
-              <span style="font-family:var(--mono);font-size:0.7rem;letter-spacing:0.08em;color:var(--muted);text-transform:uppercase">
-                🇦🇺 Australia
-              </span>
-              <button type="button" class="btn btn-ghost" style="font-size:0.65rem;padding:0.2rem 0.5rem"
-                      onclick="toggleAll('au')">All AU</button>
-            </div>
-            {% for site in sites_au %}
-            <label style="display:flex;align-items:center;gap:0.5rem;padding:0.35rem 0;cursor:pointer;font-family:var(--sans);text-transform:none;letter-spacing:0;font-size:0.82rem;color:var(--text)">
-              <input type="checkbox" name="selected_sites" value="{{ site.domain }}"
-                     class="site-cb au-cb" onchange="updateCount()"
-                     {% if site.domain in current_sites %}checked{% endif %}
-                     style="width:14px;height:14px;accent-color:var(--accent)">
-              {{ site.name }}
-              <span style="margin-left:auto;font-size:0.65rem;font-family:var(--mono);color:var(--muted)">
-                {% if site.tier == 'heavy' %}●●●{% elif site.tier == 'medium' %}●●○{% else %}●○○{% endif %}
-              </span>
-            </label>
-            {% endfor %}
+        <!-- NZ Sites -->
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.6rem">
+            <span style="font-size:0.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em">🇳🇿 New Zealand</span>
+            <button type="button" class="btn btn-ghost" style="font-size:0.68rem;padding:0.2rem 0.5rem"
+                    onclick="toggleAll('nz')">All</button>
           </div>
-
-          <div>
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem">
-              <span style="font-family:var(--mono);font-size:0.7rem;letter-spacing:0.08em;color:var(--muted);text-transform:uppercase">
-                🇳🇿 New Zealand
-              </span>
-              <button type="button" class="btn btn-ghost" style="font-size:0.65rem;padding:0.2rem 0.5rem"
-                      onclick="toggleAll('nz')">All NZ</button>
-            </div>
-            {% for site in sites_nz %}
-            <label style="display:flex;align-items:center;gap:0.5rem;padding:0.35rem 0;cursor:pointer;font-family:var(--sans);text-transform:none;letter-spacing:0;font-size:0.82rem;color:var(--text)">
-              <input type="checkbox" name="selected_sites" value="{{ site.domain }}"
-                     class="site-cb nz-cb" onchange="updateCount()"
-                     {% if site.domain in current_sites %}checked{% endif %}
-                     style="width:14px;height:14px;accent-color:var(--accent)">
-              {{ site.name }}
-              <span style="margin-left:auto;font-size:0.65rem;font-family:var(--mono);color:var(--muted)">
-                {% if site.tier == 'heavy' %}●●●{% elif site.tier == 'medium' %}●●○{% else %}●○○{% endif %}
-              </span>
-            </label>
-            {% endfor %}
-          </div>
+          {% for site in sites_nz %}
+          <label style="display:flex;align-items:center;gap:0.5rem;padding:0.3rem 0;cursor:pointer;font-size:0.82rem;color:var(--text-secondary);font-weight:400;text-transform:none;letter-spacing:0">
+            <input type="checkbox" name="selected_sites" value="{{ site.domain }}"
+                   class="site-cb nz-cb" onchange="updateCount()"
+                   {% if site.domain in current_sites %}checked{% endif %}
+                   style="width:14px;height:14px;accent-color:var(--accent);flex-shrink:0">
+            <span>{{ site.name }}</span>
+            <span style="margin-left:auto;font-size:0.62rem;font-family:var(--mono);color:var(--muted-light)">
+              {% if site.tier == 'heavy' %}●●●{% elif site.tier == 'medium' %}●●○{% else %}●○○{% endif %}
+            </span>
+          </label>
+          {% endfor %}
         </div>
+      </div>
+
+      <hr class="divider">
+      <div style="font-size:0.72rem;color:var(--muted-light);font-family:var(--mono)">
+        ●●● Heavy (JS + proxy) &nbsp;·&nbsp; ●●○ Medium (JS) &nbsp;·&nbsp; ●○○ Light (proxy)
       </div>
     </div>
   </div>
 
-  <div style="margin-top:1.5rem;display:flex;gap:0.75rem">
-    <button type="submit" class="btn btn-primary" style="padding:0.65rem 2rem">Save changes</button>
+  <div style="margin-top:1.25rem;display:flex;gap:0.65rem">
+    <button type="submit" class="btn btn-primary" style="padding:0.6rem 1.75rem">Save Changes</button>
     <a href="/job/{{ job.id }}" class="btn btn-ghost">Cancel</a>
   </div>
 </form>
