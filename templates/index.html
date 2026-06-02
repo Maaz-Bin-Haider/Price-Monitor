@@ -7,7 +7,10 @@
     <h1 class="page-title">Watchlist</h1>
     <p class="page-subtitle">{{ jobs|length }} product{% if jobs|length != 1 %}s{% endif %} monitored across AU &amp; NZ</p>
   </div>
-  <a href="/add" class="btn btn-primary">+ Add Product</a>
+  <div>
+    <a href="/add-scout" class="btn btn-ghost" style="margin-right:0.5rem">🔍 Availability Scout</a>
+    <a href="/add" class="btn btn-primary">+ Add Product</a>
+  </div>
 </div>
 
 {% if not jobs %}
@@ -44,7 +47,13 @@
           <div style="font-size:0.75rem;color:var(--muted);font-family:var(--mono)">ID #{{ job.id }}</div>
         </td>
         <td>
-          <span class="price price-normal">{{ currency }}{{ "%.2f"|format(job.target_price) }}</span>
+          {% if job.job_type == 'availability_scout' %}
+            <span style="font-family:var(--mono);font-size:0.75rem;color:var(--muted)">🔍 Scout</span>
+          {% elif job.target_price %}
+            <span class="price price-normal">{{ currency }}{{ "%.2f"|format(job.target_price) }}</span>
+          {% else %}
+            <span class="price price-muted">—</span>
+          {% endif %}
         </td>
         <td>
           {% set site_names = sites | site_names_from_domains %}
@@ -71,7 +80,9 @@
         </td>
         <td>
           {% if job.last_lowest_price %}
-            <span class="price {% if job.last_lowest_price <= job.target_price %}price-green{% else %}price-normal{% endif %}">
+            {% set is_scout = job.job_type == 'availability_scout' %}
+            {% set below = not is_scout and job.target_price and job.last_lowest_price <= job.target_price %}
+            <span class="price {% if below %}price-green{% else %}price-normal{% endif %}">
               {{ currency }}{{ "%.2f"|format(job.last_lowest_price) }}
             </span>
           {% else %}
@@ -79,7 +90,9 @@
           {% endif %}
         </td>
         <td>
-          {% if job.alert_sent %}
+          {% if job.job_type == 'availability_scout' %}
+            <span class="badge badge-green">● Scouting</span>
+          {% elif job.alert_sent %}
             <span class="badge badge-amber">● Alerted</span>
           {% else %}
             <span class="badge badge-green">● Watching</span>

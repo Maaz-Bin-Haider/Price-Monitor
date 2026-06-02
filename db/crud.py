@@ -46,9 +46,11 @@ def create_job(data: dict) -> Optional[WatchlistJob]:
         selected = data.get("selected_sites", [])
         if isinstance(selected, list):
             selected = json.dumps(selected)
+        raw_price = data.get("target_price")
         job = WatchlistJob(
+            job_type=data.get("job_type", "price_watch"),
             product_name=data["product_name"],
-            target_price=float(data["target_price"]),
+            target_price=float(raw_price) if raw_price is not None else None,
             user_email=data["user_email"],
             schedule_interval=data["schedule_interval"],
             selected_sites=selected,

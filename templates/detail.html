@@ -35,8 +35,14 @@
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1.5rem">
 
     <div>
-      <div style="font-family:var(--mono);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:0.4rem">Target Price</div>
-      <div class="price price-normal" style="font-size:1.4rem">{{ currency }}{{ "%.2f"|format(job.target_price) }}</div>
+      <div style="font-family:var(--mono);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:0.4rem">
+        {% if job.job_type == 'availability_scout' %}Mode{% else %}Target Price{% endif %}
+      </div>
+      {% if job.job_type == 'availability_scout' %}
+        <div class="price price-normal" style="font-size:1rem;font-family:var(--mono)">🔍 Availability Scout</div>
+      {% else %}
+        <div class="price price-normal" style="font-size:1.4rem">{{ currency }}{{ "%.2f"|format(job.target_price) }}</div>
+      {% endif %}
     </div>
 
     <div>
@@ -136,7 +142,7 @@
         </td>
         <td>
           {% if run.lowest_price %}
-            <span class="price {% if run.lowest_price <= job.target_price %}price-green{% else %}price-normal{% endif %}">
+            <span class="price {% if job.job_type != 'availability_scout' and run.lowest_price <= job.target_price %}price-green{% else %}price-normal{% endif %}">
               {{ currency }}{{ "%.2f"|format(run.lowest_price) }}
             </span>
             {% if run.lowest_site %}
@@ -186,7 +192,7 @@
                   {{ r.title[:60] }}{% if r.title|length > 60 %}…{% endif %}
                 </td>
                 <td>
-                  <span class="price {% if r.price <= job.target_price %}price-green{% else %}price-normal{% endif %}" style="font-size:0.85rem">
+                  <span class="price {% if job.job_type != 'availability_scout' and r.price <= job.target_price %}price-green{% else %}price-normal{% endif %}" style="font-size:0.85rem">
                     {{ currency }}{{ "%.2f"|format(r.price) }}
                   </span>
                 </td>

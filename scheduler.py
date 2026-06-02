@@ -15,8 +15,8 @@ from db.crud import (
     update_alert_sent,
     update_last_run,
 )
-from notifications.email import send_alert_email
-from scraper.runner import run_search
+from notifications.email import send_alert_email, send_availability_email
+from scraper.runner import run_search, run_availability_search
 
 _scheduler: AsyncIOScheduler | None = None
 
@@ -110,17 +110,26 @@ async def run_scheduled_job(job_id: int) -> None:
 
     selected_sites = json.loads(job.selected_sites) if isinstance(job.selected_sites, str) else job.selected_sites
 
+    job_type = getattr(job, "job_type", "price_watch") or "price_watch"
+
     run = create_run(job_id, "scheduled")
     if not run:
         return
 
     try:
-        result = await run_search(
-            job_id=job_id,
-            product_name=job.product_name,
-            target_price=job.target_price,
-            selected_sites=selected_sites,
-        )
+        if job_type == "availability_scout":
+            result = await run_availability_search(
+                job_id=job_id,
+                product_name=job.product_name,
+                selected_sites=selected_sites,
+            )
+        else:
+            result = await run_search(
+                job_id=job_id,
+                product_name=job.product_name,
+                target_price=job.target_price,
+                selected_sites=selected_sites,
+            )
     except Exception as e:
         print(f"[SCHEDULER] run_search error for job_{job_id}: {e}")
         complete_run(run.id, {
@@ -135,35 +144,48 @@ async def run_scheduled_job(job_id: int) -> None:
 
     alert_triggered = False
 
-    # Alert state machine
     job = get_job_by_id(job_id)  # Refresh
     if job:
-        if result["should_alert"] and not job.alert_sent:
-            success = await send_alert_email(job, result["below_target"])
+        if job_type == "availability_scout":
+            # Always email the availability report
+            success = await send_availability_email(job, result.get("available_sites", []))
             create_alert_log({
                 "job_id": job_id,
                 "run_result_id": run.id,
                 "email_to": job.user_email,
-                "sites_below_target": result["below_target"],
-                "lowest_price_found": result["lowest_price"] or 0,
+                "sites_below_target": result.get("available_sites", []),
+                "lowest_price_found": result.get("lowest_price") or 0,
                 "send_status": "sent" if success else "failed",
             })
-            update_alert_sent(job_id, True)
-            alert_triggered = True
-        elif not result["should_alert"] and job.alert_sent:
-            update_alert_sent(job_id, False)
+            alert_triggered = success
+        else:
+            # Price watch: original alert state machine
+            if result["should_alert"] and not job.alert_sent:
+                success = await send_alert_email(job, result["below_target"])
+                create_alert_log({
+                    "job_id": job_id,
+                    "run_result_id": run.id,
+                    "email_to": job.user_email,
+                    "sites_below_target": result["below_target"],
+                    "lowest_price_found": result["lowest_price"] or 0,
+                    "send_status": "sent" if success else "failed",
+                })
+                update_alert_sent(job_id, True)
+                alert_triggered = True
+            elif not result["should_alert"] and job.alert_sent:
+                update_alert_sent(job_id, False)
 
     complete_run(run.id, {
-        "results": result["results"],
+        "results": result.get("results", []),
         "sites_checked": result.get("sites_checked", []),
-        "lowest_price": result["lowest_price"],
-        "lowest_site": result["lowest_site"],
+        "lowest_price": result.get("lowest_price"),
+        "lowest_site": result.get("lowest_site"),
         "alert_triggered": alert_triggered,
-        "error_sites": result["error_sites"],
+        "error_sites": result.get("error_sites", []),
     })
 
     next_run = _get_next_run_time(job.schedule_interval if job else "24h")
-    update_last_run(job_id, result["lowest_price"], next_run)
+    update_last_run(job_id, result.get("lowest_price"), next_run)
 
 
 def restore_all_jobs() -> None:

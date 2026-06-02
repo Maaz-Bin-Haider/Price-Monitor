@@ -22,7 +22,7 @@ from db.crud import (
     update_last_run,
 )
 from db.models import Base, engine
-from notifications.email import send_alert_email
+from notifications.email import send_alert_email, send_availability_email
 from scheduler import (
     cancel_job,
     get_scheduler,
@@ -31,7 +31,7 @@ from scheduler import (
     run_scheduled_job,
     _get_next_run_time,
 )
-from scraper.runner import run_search
+from scraper.runner import run_search, run_availability_search
 
 app = FastAPI(title="Price Monitor")
 
@@ -98,11 +98,8 @@ templates.env.filters["site_names_from_domains"] = _site_names_from_domains
 # ── Startup / Shutdown ─────────────────────────────────────────────────────
 @app.on_event("startup")
 async def startup_event():
-    # 1. Create tables (safe, no-op if already exist)
     Base.metadata.create_all(bind=engine)
-    # 2. Restore APScheduler jobs for all active watchlist entries
     restore_all_jobs()
-    # 3. Start the scheduler
     get_scheduler().start()
     print("[APP] Price Monitor started")
 
@@ -154,8 +151,55 @@ async def add_submit(
         }, status_code=400)
 
     job = create_job({
+        "job_type": "price_watch",
         "product_name": product_name,
         "target_price": target_price,
+        "user_email": user_email,
+        "schedule_interval": schedule_interval,
+        "selected_sites": selected_sites,
+    })
+
+    if job:
+        register_job(job)
+
+    return RedirectResponse(url="/", status_code=303)
+
+
+@app.get("/add-scout", response_class=HTMLResponse)
+async def add_scout_form(request: Request):
+    sites_au = [s for s in SITES if s["geo"] == "au"]
+    sites_nz = [s for s in SITES if s["geo"] == "nz"]
+    return templates.TemplateResponse("add_scout.html", {
+        "request": request,
+        "sites_au": sites_au,
+        "sites_nz": sites_nz,
+    })
+
+
+@app.post("/add-scout")
+async def add_scout_submit(
+    request: Request,
+    product_name: str = Form(...),
+    user_email: str = Form(...),
+    schedule_interval: str = Form(...),
+):
+    form = await request.form()
+    selected_sites = form.getlist("selected_sites")
+
+    if not selected_sites:
+        sites_au = [s for s in SITES if s["geo"] == "au"]
+        sites_nz = [s for s in SITES if s["geo"] == "nz"]
+        return templates.TemplateResponse("add_scout.html", {
+            "request": request,
+            "sites_au": sites_au,
+            "sites_nz": sites_nz,
+            "error": "Please select at least one site.",
+        }, status_code=400)
+
+    job = create_job({
+        "job_type": "availability_scout",
+        "product_name": product_name,
+        "target_price": None,
         "user_email": user_email,
         "schedule_interval": schedule_interval,
         "selected_sites": selected_sites,
@@ -191,13 +235,22 @@ async def run_now(job_id: int):
     if not run:
         return JSONResponse({"error": "Could not create run"}, status_code=500)
 
+    job_type = getattr(job, "job_type", None) or "price_watch"
+
     try:
-        result = await run_search(
-            job_id=job_id,
-            product_name=job.product_name,
-            target_price=job.target_price,
-            selected_sites=selected_sites,
-        )
+        if job_type == "availability_scout":
+            result = await run_availability_search(
+                job_id=job_id,
+                product_name=job.product_name,
+                selected_sites=selected_sites,
+            )
+        else:
+            result = await run_search(
+                job_id=job_id,
+                product_name=job.product_name,
+                target_price=job.target_price,
+                selected_sites=selected_sites,
+            )
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
 
@@ -205,32 +258,44 @@ async def run_now(job_id: int):
     job = get_job_by_id(job_id)  # refresh
 
     if job:
-        if result["should_alert"] and not job.alert_sent:
-            success = await send_alert_email(job, result["below_target"])
+        if job_type == "availability_scout":
+            success = await send_availability_email(job, result.get("available_sites", []))
             create_alert_log({
                 "job_id": job_id,
                 "run_result_id": run.id,
                 "email_to": job.user_email,
-                "sites_below_target": result["below_target"],
-                "lowest_price_found": result["lowest_price"] or 0,
+                "sites_below_target": result.get("available_sites", []),
+                "lowest_price_found": result.get("lowest_price") or 0,
                 "send_status": "sent" if success else "failed",
             })
-            update_alert_sent(job_id, True)
-            alert_triggered = True
-        elif not result["should_alert"] and job.alert_sent:
-            update_alert_sent(job_id, False)
+            alert_triggered = success
+        else:
+            if result["should_alert"] and not job.alert_sent:
+                success = await send_alert_email(job, result["below_target"])
+                create_alert_log({
+                    "job_id": job_id,
+                    "run_result_id": run.id,
+                    "email_to": job.user_email,
+                    "sites_below_target": result["below_target"],
+                    "lowest_price_found": result["lowest_price"] or 0,
+                    "send_status": "sent" if success else "failed",
+                })
+                update_alert_sent(job_id, True)
+                alert_triggered = True
+            elif not result["should_alert"] and job.alert_sent:
+                update_alert_sent(job_id, False)
 
     complete_run(run.id, {
-        "results": result["results"],
+        "results": result.get("results", []),
         "sites_checked": result.get("sites_checked", []),
-        "lowest_price": result["lowest_price"],
-        "lowest_site": result["lowest_site"],
+        "lowest_price": result.get("lowest_price"),
+        "lowest_site": result.get("lowest_site"),
         "alert_triggered": alert_triggered,
-        "error_sites": result["error_sites"],
+        "error_sites": result.get("error_sites", []),
     })
 
     next_run = _get_next_run_time(job.schedule_interval if job else "24h")
-    update_last_run(job_id, result["lowest_price"], next_run)
+    update_last_run(job_id, result.get("lowest_price"), next_run)
 
     return JSONResponse({"run_id": run.id, "job_id": job_id})
 
@@ -255,7 +320,7 @@ async def edit_submit(
     request: Request,
     job_id: int,
     product_name: str = Form(...),
-    target_price: float = Form(...),
+    target_price: Optional[float] = Form(None),
     user_email: str = Form(...),
     schedule_interval: str = Form(...),
 ):
@@ -270,7 +335,6 @@ async def edit_submit(
         "selected_sites": selected_sites,
     })
 
-    # Re-register with new schedule
     cancel_job(job_id)
     job = get_job_by_id(job_id)
     if job:

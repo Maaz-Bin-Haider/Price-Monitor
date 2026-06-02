@@ -87,3 +87,42 @@ async def send_alert_email(job, below_target: list[dict]) -> bool:
         return await _send_sendgrid(job.user_email, subject, html_body)
     else:
         return await _send_smtp(job.user_email, subject, html_body)
+
+
+def _render_availability_template(job, available_sites: list[dict]) -> str:
+    """Render the email_availability.html Jinja2 template."""
+    templates_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")
+    env = Environment(loader=FileSystemLoader(templates_dir))
+    template = env.get_template("email_availability.html")
+    lowest = available_sites[0] if available_sites else {}
+    return template.render(
+        product_name=job.product_name,
+        available_sites=available_sites,
+        lowest_price=lowest.get("price"),
+        lowest_site=lowest.get("site_name"),
+        lowest_link=lowest.get("link"),
+    )
+
+
+async def send_availability_email(job, available_sites: list[dict]) -> bool:
+    """
+    Send availability report email (no target price comparison).
+    Always sends regardless of alert_sent state.
+    Returns True on success, False on failure.
+    """
+    count = len(available_sites)
+    if count > 0:
+        subject = f"Availability Report: {job.product_name} found on {count} site{'s' if count != 1 else ''}"
+    else:
+        subject = f"Availability Report: {job.product_name} — no listings found"
+
+    try:
+        html_body = _render_availability_template(job, available_sites)
+    except Exception as e:
+        print(f"[EMAIL] Availability template render error: {e}")
+        return False
+
+    if settings.USE_SENDGRID:
+        return await _send_sendgrid(job.user_email, subject, html_body)
+    else:
+        return await _send_smtp(job.user_email, subject, html_body)

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f4f8; margin: 0; padding: 0; }
+    .wrapper { max-width: 600px; margin: 32px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+    .header { background: #0a0a1a; padding: 32px 36px; }
+    .header h1 { color: #fff; font-size: 22px; margin: 0 0 6px; }
+    .header p { color: #6b6b8a; font-size: 13px; margin: 0; font-family: monospace; }
+    .body { padding: 28px 36px; }
+    .highlight-box { background: #eff6ff; border: 1px solid #93c5fd; border-radius: 6px; padding: 16px 20px; margin: 18px 0; }
+    .highlight-box .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #6b6b8a; margin-bottom: 4px; }
+    .highlight-box .value { font-size: 26px; font-weight: 700; color: #1d4ed8; font-family: monospace; }
+    .highlight-box .sub { font-size: 13px; color: #374151; margin-top: 2px; }
+    table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 13px; }
+    th { background: #f9fafb; text-align: left; padding: 9px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #6b7280; border-bottom: 2px solid #e5e7eb; }
+    td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    .price-cell { font-weight: 700; font-family: monospace; color: #1d4ed8; }
+    .buy-link { display: inline-block; background: #1d4ed8; color: #fff !important; text-decoration: none; padding: 5px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+    .footer { background: #f9fafb; border-top: 1px solid #e5e7eb; padding: 18px 36px; font-size: 12px; color: #9ca3af; line-height: 1.6; }
+    .site-name { font-weight: 600; color: #111; }
+    .match-pct { color: #9ca3af; font-size: 11px; font-family: monospace; }
+    .not-found { text-align: center; padding: 32px 0; color: #6b7280; }
+    .not-found .icon { font-size: 2.5rem; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <h1>🔍 Availability Report</h1>
+    <p>PRICE MONITOR · Availability Scout</p>
+  </div>
+  <div class="body">
+    <p style="font-size:15px;color:#111;margin-bottom:16px">
+      Here are the results for <strong>{{ product_name }}</strong> across your selected sites.
+    </p>
+
+    {% if available_sites %}
+      <div class="highlight-box">
+        <div class="label">Lowest price found</div>
+        <div class="value">${{ "%.2f"|format(lowest_price) }}</div>
+        <div class="sub">at {{ lowest_site }}
+          {% if lowest_link %}
+            &nbsp;— <a href="{{ lowest_link }}" style="color:#1d4ed8">View listing ↗</a>
+          {% endif %}
+        </div>
+      </div>
+
+      <h3 style="font-size:13px;text-transform:uppercase;letter-spacing:0.08em;color:#6b7280;margin:24px 0 8px">
+        All sites where {{ product_name }} is available ({{ available_sites|length }} found)
+      </h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Site</th>
+            <th>Product</th>
+            <th>Price</th>
+            <th>Link</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in available_sites %}
+          <tr>
+            <td class="site-name">{{ item.site_name }}</td>
+            <td>
+              {{ item.title[:70] }}{% if item.title|length > 70 %}…{% endif %}
+              <br><span class="match-pct">{{ item.match_score }}% match</span>
+            </td>
+            <td class="price-cell">${{ "%.2f"|format(item.price) }}</td>
+            <td>
+              {% if item.link %}
+                <a href="{{ item.link }}" class="buy-link">View ↗</a>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="not-found">
+        <div class="icon">😔</div>
+        <p style="font-size:15px;color:#374151;font-weight:600">No listings found</p>
+        <p style="font-size:13px;color:#6b7280">
+          <strong>{{ product_name }}</strong> was not found on any of the selected sites at this time.
+          We'll check again on your next scheduled run.
+        </p>
+      </div>
+    {% endif %}
+  </div>
+  <div class="footer">
+    This is a scheduled availability report from Price Monitor. You will receive this report on each scheduled run.
+  </div>
+</div>
+</body>
+</html>

@@ -15,8 +15,9 @@ class WatchlistJob(Base):
     __tablename__ = "watchlist_jobs"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    job_type = Column(String(20), nullable=False, default="price_watch")  # 'price_watch' | 'availability_scout'
     product_name = Column(String(500), nullable=False)
-    target_price = Column(Float, nullable=False)
+    target_price = Column(Float, nullable=True)   # NULL for availability_scout jobs
     user_email = Column(String(320), nullable=False)
     schedule_interval = Column(String(20), nullable=False)  # 12h, 24h, weekly, monthly
     selected_sites = Column(Text, nullable=False)  # JSON array of domain strings
