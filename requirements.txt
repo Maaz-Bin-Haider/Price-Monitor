@@ -13,3 +13,4 @@ pydantic-settings==2.2.1
 python-dotenv==1.0.1
 aiosmtplib==3.0.1
 sendgrid==6.11.0
+psycopg2-binary
