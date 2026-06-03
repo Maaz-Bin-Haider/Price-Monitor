@@ -114,7 +114,10 @@ from logging.config import fileConfig
 from sqlalchemy import create_engine, pool
 from alembic import context
 
-from db.models import Base
+# ── THIS IS THE CRITICAL PART ──────────────────────────
+# Must import Base AND all models so SQLAlchemy registers them
+from db.models import Base, WatchlistJob, RunResult, AlertLog
+# ───────────────────────────────────────────────────────
 
 config = context.config
 

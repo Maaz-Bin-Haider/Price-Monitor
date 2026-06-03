@@ -1,0 +1,56 @@
+version: "3.9"
+
+services:
+
+  db:
+    image: postgres:16-alpine
+    container_name: price-monitor-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: pricing_monitor
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: swisstech@admin123
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pricing_monitor"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # app:
+  #   build: .
+  #   container_name: price-monitor-app
+  #   restart: unless-stopped
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #   ports:
+  #     - "8000:8000"
+  #   environment:
+  #     DATABASE_URL: postgresql://postgres:swisstech%40admin123@db:5432/pricing_monitor
+  #   env_file:
+  #     - .env
+  #   volumes:
+  #     - .:/app        # live code reload
+  app:
+    image: ghcr.io/yourusername/price-monitor:latest   # will use this in CI/CD step
+    build: .                                            # used for now before CI/CD
+    container_name: price-monitor-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://postgres:swisstech%40admin123@db:5432/pricing_monitor
+    env_file:
+      - .env
+    # NO volume mount here — code comes from the image
+
+volumes:
+  pgdata:
+    driver: local
