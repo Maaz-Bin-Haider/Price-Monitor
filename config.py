@@ -149,14 +149,14 @@ SITES = [
         "domain": "rubbermonkey.com.au",
         "tier": "light",
         "geo": "au",
-        "search_url": "https://www.rubbermonkey.com.au/search?q={query}",
+        "search_url": "https://www.rubbermonkey.com.au/Search?searchText={query}",
     },
     {
         "name": "Rubber Monkey NZ",
         "domain": "rubbermonkey.co.nz",
         "tier": "light",
         "geo": "nz",
-        "search_url": "https://www.rubbermonkey.co.nz/search?q={query}",
+        "search_url": "https://www.rubbermonkey.co.nz/Search?searchText={query}",
     },
     {
         "name": "Photo Gear",
