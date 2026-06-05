@@ -161,9 +161,9 @@ SITES = [
     {
         "name": "Photo Gear",
         "domain": "photogear.co.nz",
-        "tier": "light",
-        "geo": "au",
-        "search_url": "https://www.photogear.co.nz/search?type=product&q={query}",
+        "tier": "medium",
+        "geo": "nz",
+        "search_url": "https://photogear.co.nz/search-results-page?q={query}",
     },
     {
         "name": "Photo Warehouse",

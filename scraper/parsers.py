@@ -26,7 +26,7 @@ SITE_PARSERS = {
     "camerapro.com.au":      {"_type": "magento",       "base": "https://www.camerapro.com.au"},
     "rubbermonkey.com.au":   {"_type": "rubbermonkey",  "base": "https://www.rubbermonkey.com.au"},
     "rubbermonkey.co.nz":    {"_type": "rubbermonkey",  "base": "https://www.rubbermonkey.co.nz"},
-    "photogear.co.nz":       {"_type": "shopify",       "base": "https://www.photogear.co.nz"},
+    "photogear.co.nz":       {"_type": "klevu",        "base": "https://photogear.co.nz"},
     "photowarehouse.co.nz":  {"_type": "shopify",       "base": "https://www.photowarehouse.co.nz"},
     "jacobsdigital.co.nz":   {"_type": "shopify",       "base": "https://www.jacobsdigital.co.nz"},
 }
@@ -578,8 +578,83 @@ def _extract_json_generic(html, base):
             results.append({"title": name, "price": p, "link": abs_url(url, base)})
     return results
 
-# ── Dispatch ──────────────────────────────────────────────────────────────
+# ── Klevu / Snize Search (PhotoGear — JS-rendered search results) ─────────
+def _klevu(html, base, **_):
+    """
+    PhotoGear uses Searchanise (Snize) for search results.
+    After JS render, products appear as <li class="snize-product"> elements with:
+      - a.snize-view-link  → product URL
+      - span.snize-title   → product name
+      - first $X,XXX.XX text in card → price
+    Falls back to Shopify JSON if Snize didn't render.
+    """
+    results = []
+    try:
+        soup = BeautifulSoup(html, "lxml")
+
+        # Method 1 — Snize rendered product cards
+        cards = soup.select("li.snize-product")
+        for card in cards[:12]:
+            # Title
+            title_el = card.select_one(".snize-title")
+            title = title_el.get_text(strip=True) if title_el else ""
+
+            # Link — wrapping <a> with class snize-view-link
+            link_el = card.select_one("a.snize-view-link")
+            href = link_el.get("href", "") if link_el else ""
+            link = href if href.startswith("http") else base + href
+
+            # Price — first $X,XXX.XX pattern in card text
+            card_text = card.get_text(" ")
+            import re as _re
+            prices = _re.findall(r"\$([0-9,]+(?:\.[0-9]+)?)", card_text)
+            price = None
+            for p in prices:
+                try:
+                    price = float(p.replace(",", ""))
+                    if price > 0:
+                        break
+                except Exception:
+                    continue
+
+            if title and price and link:
+                results.append({"title": title, "price": price, "link": link})
+
+        if results:
+            return results
+
+        # Method 2 — Klevu rendered cards (ku- prefix, alternative layout)
+        for sel in ["li.klevuProduct", "li.ku-result-item", "[class*='klevuProduct']"]:
+            cards = soup.select(sel)
+            if cards:
+                for card in cards[:12]:
+                    name_el = (
+                        card.select_one(".ku-title") or
+                        card.select_one("[class*='ku-title']") or
+                        card.select_one("h2") or card.select_one("h3")
+                    )
+                    title = name_el.get_text(strip=True) if name_el else ""
+                    price_el = card.select_one(".ku-price") or card.select_one("[class*='price']")
+                    price = clean_price(price_el.get_text() if price_el else "")
+                    link_el = card.select_one("a")
+                    href = link_el.get("href", "") if link_el else ""
+                    link = abs_url(href, base)
+                    if title and price and link:
+                        results.append({"title": title, "price": price, "link": link})
+                if results:
+                    return results
+
+        # Method 3 — Shopify JSON fallback (non-JS page)
+        results = _shopify(html, base)
+
+    except Exception as e:
+        print(f"[PARSER] klevu: {e}")
+    return results
+
+
+
 _EXTRACTORS = {
+    "klevu":        _klevu,
     "shopify":      _shopify,
     "goodguys":     _goodguys,
     "harveynorman": _harveynorman,

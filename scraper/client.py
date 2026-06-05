@@ -17,6 +17,7 @@ async def fetch_page(url: str, tier: str, geo: str) -> str | None:
         "geoCode": geo,
     }
     if tier in ("heavy", "medium"):
+        params["waitFor"] = "5000"
         params["render"] = "true"
     if tier == "heavy":
         params["super"] = "true"
