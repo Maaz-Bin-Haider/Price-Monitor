@@ -9,7 +9,7 @@ import httpx, urllib.parse
 
 async def save_html(domain, product):
     query = urllib.parse.quote_plus(product)
-    url = f"https://photogear.co.nz/search-results-page?q={query}"
+    url = f"https://www.photowarehouse.co.nz/shop/shop-by-product?searchfilter=Keyword~{query}&sort=relevant"
     params = {
         "token": settings.SCRAPE_DO_TOKEN,
         "url": url,
@@ -18,8 +18,8 @@ async def save_html(domain, product):
     }
     async with httpx.AsyncClient(timeout=90) as client:
         resp = await client.get("https://api.scrape.do", params=params)
-        with open("photogear.html", "w", encoding="utf-8") as f:
+        with open("photowarehouse.html", "w", encoding="utf-8") as f:
             f.write(resp.text)
-        print(f"Saved {len(resp.text):,} bytes to auckland_mall.html")
+        print(f"Saved {len(resp.text):,} bytes to photowarehouse.html")
 
-asyncio.run(save_html("photogear.co.nz", "Sony ZV-1 Digital Vlogging Camera"))
+asyncio.run(save_html("photowarehouse.co.nz", "DJI Mic Mini 2"))

@@ -30,7 +30,7 @@ STRONG_ACCESSORY_PHRASES = [
     "charging cable", "data cable", "extension cable", "power lead",
     # Mounts
     "wall mount", "ceiling mount", "roof mount", "pipe mount",
-    "pole adaptor", "edge protector", "skidplate",
+    "pole adaptor", "edge protector",
     # Gaming accessories
     "controller skin", "thumb grip",
     # Wearable accessories
@@ -41,6 +41,12 @@ STRONG_ACCESSORY_PHRASES = [
     "ssd enclosure", "hard drive enclosure",
     # Other strong indicators
     "stylus", "antenna", "propellers", "actuated cable",
+    # Audio/video accessories
+    "windscreen", "windscreens", "deadcat", "pop shield", "pop filter",
+    "shock mount", "boom arm", "mic stand", "microphone stand",
+    "transmitter", "receiver",
+    # Covers and skins
+    "front cover", "back cover", "lens cover",
 ]
 
 WEAK_ACCESSORY_PHRASES = [
@@ -168,10 +174,17 @@ def _accessory_penalty(query: str, candidate: str) -> float:
 
     # Special rule: title ends with "case" and query doesn't contain "case"
     # → almost certainly a protective case accessory
+    # BUT exclude compound cases that are part of the product (charging case, carry case used as bundle)
     if c.endswith(" case") and not _contains_phrase(q, "case"):
-        if bundle:
-            return 0.70
-        return STRONG_PENALTY
+        # Check it's not a product-component case (charging, carry, hard, soft already in STRONG)
+        # Only penalise if "case" is likely standalone (preceded by brand/model name)
+        # i.e. the word before "case" is not a product-descriptor word
+        component_cases = ("charging case", "carry case", "transit case", "storage case")
+        is_component = any(_contains_phrase(c, cc) for cc in component_cases)
+        if not is_component:
+            if bundle:
+                return 0.70
+            return STRONG_PENALTY
 
     # ── Check STRONG phrases first (sorted longest first for specificity) ──
     # Fixes Issue 10: longer phrases checked before shorter ones

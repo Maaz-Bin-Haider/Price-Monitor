@@ -27,7 +27,7 @@ SITE_PARSERS = {
     "rubbermonkey.com.au":   {"_type": "rubbermonkey",  "base": "https://www.rubbermonkey.com.au"},
     "rubbermonkey.co.nz":    {"_type": "rubbermonkey",  "base": "https://www.rubbermonkey.co.nz"},
     "photogear.co.nz":       {"_type": "klevu",        "base": "https://photogear.co.nz"},
-    "photowarehouse.co.nz":  {"_type": "shopify",       "base": "https://www.photowarehouse.co.nz"},
+    "photowarehouse.co.nz":  {"_type": "photowarehouse", "base": "https://www.photowarehouse.co.nz"},
     "jacobsdigital.co.nz":   {"_type": "shopify",       "base": "https://www.jacobsdigital.co.nz"},
 }
 
@@ -652,9 +652,50 @@ def _klevu(html, base, **_):
     return results
 
 
+# ── Photo Warehouse NZ ───────────────────────────────────────────────────
+def _photowarehouse(html, base, **_):
+    """
+    Photo Warehouse NZ. Products are <a class="product-card"> elements.
+    Title lives in data-pf-title attribute on an inner div.
+    Price is the first $X,XXX.XX pattern in the card text.
+    """
+    results = []
+    try:
+        soup = BeautifulSoup(html, "lxml")
+        for card in soup.select("a.product-card")[:24]:
+            href = card.get("href", "")
+            link = base + href if href.startswith("/") else href
+
+            # Title from data-pf-title attribute
+            pf = card.select_one("[data-pf-title]")
+            title = pf.get("data-pf-title", "").strip() if pf else ""
+
+            # Fallback: first meaningful text string
+            if not title:
+                for txt in card.stripped_strings:
+                    if len(txt) > 10 and not txt.startswith("$"):
+                        title = txt
+                        break
+
+            # Price — first $X,XXX.XX in card text
+            prices = re.findall(r"\$([0-9,]+(?:\.[0-9]+)?)", card.get_text())
+            price = None
+            if prices:
+                try:
+                    price = float(prices[0].replace(",", ""))
+                except Exception:
+                    pass
+
+            if title and price and link:
+                results.append({"title": title, "price": price, "link": link})
+    except Exception as e:
+        print(f"[PARSER] photowarehouse: {e}")
+    return results
+
 
 _EXTRACTORS = {
-    "klevu":        _klevu,
+    "klevu":          _klevu,
+    "photowarehouse": _photowarehouse,
     "shopify":      _shopify,
     "goodguys":     _goodguys,
     "harveynorman": _harveynorman,

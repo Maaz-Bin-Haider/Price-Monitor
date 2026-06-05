@@ -170,7 +170,7 @@ SITES = [
         "domain": "photowarehouse.co.nz",
         "tier": "light",
         "geo": "au",
-        "search_url": "https://www.photowarehouse.co.nz/search?type=product&q={query}",
+        "search_url": "https://www.photowarehouse.co.nz/shop/shop-by-product?searchfilter=Keyword~{query}&sort=relevant",
     },
     {
         "name": "Jacobs Digital",
