@@ -164,6 +164,7 @@ SITES = [
         "tier": "medium",
         "geo": "nz",
         "search_url": "https://photogear.co.nz/search-results-page?q={query}",
+        "cache_bust": True,
     },
     {
         "name": "Photo Warehouse",

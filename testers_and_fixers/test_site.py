@@ -12,6 +12,7 @@ import asyncio
 import argparse
 import sys
 import os
+import time
 from datetime import datetime
 from dotenv import load_dotenv
 load_dotenv()
@@ -66,6 +67,11 @@ async def fetch_html(site: dict, product: str) -> tuple[str | None, str, int]:
     query = urllib.parse.quote_plus(product)
     url   = site["search_url"].format(query=query)
 
+    # Cache bust for sites that use JS search widgets (Snize, Klevu etc)
+    # Adds a unique timestamp so scrape.do never serves cached skeleton HTML
+    if site.get("cache_bust"):
+        url += f"&_ts={int(time.time())}"
+
     params = {
         "token":   settings.SCRAPE_DO_TOKEN,
         "url":     url,
@@ -79,7 +85,7 @@ async def fetch_html(site: dict, product: str) -> tuple[str | None, str, int]:
         params["waitFor"] = "12000"
 
     print(f"\n  {DIM}Fetching: {url[:90]}{RESET}")
-    print(f"  {DIM}Scrape.do params: tier={site['tier']} render={'true' if 'render' in params else 'false'} super={'true' if 'super' in params else 'false'}{RESET}\n")
+    print(f"  {DIM}Scrape.do params: tier={site['tier']} render={'true' if 'render' in params else 'false'} super={'true' if 'super' in params else 'false'} waitFor={params.get('waitFor','—')} cache_bust={site.get('cache_bust', False)}{RESET}\n")
 
     try:
         async with httpx.AsyncClient(timeout=90) as client:
@@ -152,7 +158,7 @@ async def test_site(domain: str, product: str, threshold: float, raw_mode: bool 
     else:
         print(f"{GREEN}{size_str}{RESET}")
 
-    # Raw HTML snippet (first 500 chars) for debugging
+    # Raw HTML snippet for debugging
     if raw_mode:
         print(f"\n  {BOLD}Raw HTML preview (first 800 chars):{RESET}")
         print_separator("·")
@@ -207,7 +213,6 @@ async def test_site(domain: str, product: str, threshold: float, raw_mode: bool 
     if not raw_items:
         print(f"  {YELLOW}Skipped — no items to match.{RESET}")
     else:
-        # Attach site metadata (same as runner.py does)
         for item in raw_items:
             item["site_name"] = site["name"]
             item["domain"]    = domain
@@ -223,7 +228,6 @@ async def test_site(domain: str, product: str, threshold: float, raw_mode: bool 
         if len(matched) == 0:
             print(f"{RED}0  ← no items passed the threshold{RESET}")
             print(f"\n  {YELLOW}Top scores from unmatched items:{RESET}")
-            # Show top scores even for non-matching items to help with threshold tuning
             from matcher.engine import score as compute_score
             scored_all = []
             for item in raw_items:
@@ -239,8 +243,6 @@ async def test_site(domain: str, product: str, threshold: float, raw_mode: bool 
             print(f"\n  {DIM}Tip: if these look like valid results, lower --threshold (currently {threshold}){RESET}")
         else:
             print(f"{GREEN}{len(matched)}{RESET}")
-
-            # ── Matched results ────────────────────────────────────────────
             print(f"\n  {BOLD}Matched results (sorted by score):{RESET}")
             print_separator("·")
             for i, m in enumerate(matched, 1):

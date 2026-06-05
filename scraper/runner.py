@@ -1,3 +1,4 @@
+import time
 import urllib.parse
 from config import SITES
 from scraper.client import fetch_all
@@ -36,6 +37,10 @@ async def run_search(
     for site in filtered_sites:
         query = urllib.parse.quote_plus(product_name)
         url = site["search_url"].format(query=query)
+        # Cache bust for sites that use JS search widgets (Snize, Klevu etc)
+        # Adds a unique timestamp so scrape.do never serves cached skeleton HTML
+        if site.get("cache_bust"):
+            url += f"&_ts={int(time.time())}"
         tasks.append({
             "url": url,
             "tier": site["tier"],
@@ -128,6 +133,9 @@ async def run_availability_search(
     for site in filtered_sites:
         query = urllib.parse.quote_plus(product_name)
         url = site["search_url"].format(query=query)
+        # Cache bust for sites that use JS search widgets
+        if site.get("cache_bust"):
+            url += f"&_ts={int(time.time())}"
         tasks.append({
             "url": url,
             "tier": site["tier"],
