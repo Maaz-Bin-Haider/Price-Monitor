@@ -1,0 +1,41 @@
+# List all available site domains
+python test_site.py --list
+
+# Test a site with default product (Sony WH-1000XM5)
+python test_site.py --site jbhifi.com.au
+
+# Test with a specific product
+python test_site.py --site harveynorman.com.au --product "Samsung 65 inch TV"
+
+# Lower threshold to see near-misses
+python test_site.py --site jbhifi.com.au --product "iPhone 16 Pro" --threshold 55
+
+# Add --raw to see first 800 chars of HTML (useful when parser returns nothing)
+python test_site.py --site camerapro.com.au --product "Canon EOS R5" --raw
+
+
+
+SITE_PARSERS = {
+    "jbhifi.com.au":         {"_type": "shopify",       "base": "https://www.jbhifi.com.au"},
+    "jbhifi.co.nz":          {"_type": "shopify",       "base": "https://www.jbhifi.co.nz"},
+    "thegoodguys.com.au":    {"_type": "goodguys"},
+    "harveynorman.com.au":   {"_type": "harveynorman",  "base": "https://www.harveynorman.com.au"},
+    "harveynorman.co.nz":    {"_type": "cscart",        "base": "https://www.harveynorman.co.nz"},
+    "bigw.com.au":           {"_type": "bigw",          "base": "https://www.bigw.com.au"},
+    "bunnings.com.au":       {"_type": "bunnings",      "base": "https://www.bunnings.com.au"},
+    "bunnings.co.nz":        {"_type": "bunnings",      "base": "https://www.bunnings.co.nz"},
+    "officeworks.com.au":    {"_type": "algolia",       "base": "https://www.officeworks.com.au"},
+    "costco.com.au":         {"_type": "costco",        "base": "https://www.costco.com.au"},
+    "anacondastores.com":    {"_type": "anaconda",      "base": "https://www.anacondastores.com"},
+    "bcf.com.au":            {"_type": "bcf",           "base": "https://www.bcf.com.au"},
+    "noelleeming.co.nz":     {"_type": "noelleeming",   "base": "https://www.noelleeming.co.nz"},
+    "pbtech.co.nz":          {"_type": "pbtech",        "base": "https://www.pbtech.co.nz"},
+    "themall.aucklandairport.co.nz": {"_type": "auckland_mall", "base": "https://themall.aucklandairport.co.nz"},
+    "digidirect.com.au":     {"_type": "magento",       "base": "https://www.digidirect.com.au"},
+    "camerapro.com.au":      {"_type": "magento",       "base": "https://www.camerapro.com.au"},
+    "rubbermonkey.com.au":   {"_type": "rubbermonkey",  "base": "https://www.rubbermonkey.com.au"},
+    "rubbermonkey.co.nz":    {"_type": "rubbermonkey",  "base": "https://www.rubbermonkey.co.nz"},
+    "photogear.co.nz":       {"_type": "shopify",       "base": "https://www.photogear.co.nz"},
+    "photowarehouse.co.nz":  {"_type": "shopify",       "base": "https://www.photowarehouse.co.nz"},
+    "jacobsdigital.co.nz":   {"_type": "shopify",       "base": "https://www.jacobsdigital.co.nz"},
+}
