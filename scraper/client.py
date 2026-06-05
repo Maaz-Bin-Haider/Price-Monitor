@@ -17,14 +17,16 @@ async def fetch_page(url: str, tier: str, geo: str) -> str | None:
         "geoCode": geo,
     }
     if tier in ("heavy", "medium"):
-        params["waitFor"] = "5000"
         params["render"] = "true"
     if tier == "heavy":
         params["super"] = "true"
+    # Give JS-heavy sites extra time to load dynamic content
+    if tier in ("heavy", "medium"):
+        params["waitFor"] = "12000"
 
     async with _semaphore:
         try:
-            async with httpx.AsyncClient(timeout=60) as client:
+            async with httpx.AsyncClient(timeout=90) as client:
                 response = await client.get(SCRAPE_DO_BASE, params=params)
                 if response.status_code == 200:
                     return response.text

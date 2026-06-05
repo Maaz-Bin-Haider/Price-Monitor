@@ -8,16 +8,13 @@ import httpx, urllib.parse
 
 async def save(product):
     query = urllib.parse.quote_plus(product)
-    url = f"https://photogear.co.nz/search-results-page?q={query}"
+    url = f"https://photogear.co.nz/search-results?search_query_adv={query}"
     params = {
         "token": settings.SCRAPE_DO_TOKEN,
         "url": url,
         "geoCode": "nz",
-        "render": "true",
-        "waitForSelector": "li.klevuProduct,li.snize-product,.ku-result-item",
-        "timeout": "30000",
     }
-    async with httpx.AsyncClient(timeout=90) as client:
+    async with httpx.AsyncClient(timeout=60) as client:
         resp = await client.get("https://api.scrape.do", params=params)
         print(f"Status: {resp.status_code}  Size: {len(resp.text):,}")
         with open("photogear_rendered.html", "w", encoding="utf-8") as f:

@@ -169,7 +169,7 @@ SITES = [
         "name": "Photo Warehouse",
         "domain": "photowarehouse.co.nz",
         "tier": "light",
-        "geo": "nz",
+        "geo": "au",
         "search_url": "https://www.photowarehouse.co.nz/shop/shop-by-product?searchfilter=Keyword~{query}&sort=relevant",
     },
     {

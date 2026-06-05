@@ -75,6 +75,8 @@ async def fetch_html(site: dict, product: str) -> tuple[str | None, str, int]:
         params["render"] = "true"
     if site["tier"] == "heavy":
         params["super"] = "true"
+    if site["tier"] in ("heavy", "medium"):
+        params["waitFor"] = "12000"
 
     print(f"\n  {DIM}Fetching: {url[:90]}{RESET}")
     print(f"  {DIM}Scrape.do params: tier={site['tier']} render={'true' if 'render' in params else 'false'} super={'true' if 'super' in params else 'false'}{RESET}\n")
