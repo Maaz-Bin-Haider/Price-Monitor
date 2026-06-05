@@ -528,39 +528,35 @@ def _algolia(html, base, **_):
 # ── Auckland Airport Mall (duty-free retail) ──────────────────────────────
 def _auckland_mall(html, base, **_):
     """
-    Auckland Airport duty-free mall. Custom CMS with product cards.
-    URL: /en/intl-duty-free/search/product?q=
+    Auckland Airport duty-free mall.
+    Products are rendered as <a class="productTile productGridItem"> inside
+    a <div class="productGrid">. Each tile has:
+      - title attribute  → product name
+      - href attribute   → product URL (relative)
+      - first $X.XX text → sale/current price
     """
     results = []
     try:
         soup = BeautifulSoup(html, "lxml")
-        # Try common product card selectors for retail CMSes
-        for sel in [
-            "div[class*='product-card']",
-            "div[class*='ProductCard']",
-            "div[class*='product-tile']",
-            "article[class*='product']",
-            "li[class*='product']",
-            "div[class*='product-item']",
-        ]:
-            cards = soup.select(sel)
-            if cards:
-                for card in cards[:12]:
-                    name_el = (card.select_one("h3") or card.select_one("h2") or
-                               card.select_one("[class*='name']") or card.select_one("[class*='title']"))
-                    price_el = (card.select_one("[class*='price']") or
-                                card.select_one("[class*='Price']"))
-                    link_el  = card.select_one("a")
-                    title = name_el.get_text(strip=True) if name_el else ""
-                    price = clean_price(price_el.get_text() if price_el else "")
-                    href  = abs_url(link_el.get("href","") if link_el else "", base)
-                    if title and price and href:
-                        results.append({"title": title, "price": price, "link": href})
-                if results:
+        grid = soup.select_one(".productGrid")
+        if not grid:
+            return results
+        tiles = grid.select("a.productTile")
+        for tile in tiles[:24]:
+            title = tile.get("title", "").strip()
+            href  = tile.get("href", "").strip()
+            if not title or not href:
+                continue
+            link = base + href if href.startswith("/") else href
+            # Collect all visible text strings and find first price
+            price = None
+            for text in tile.stripped_strings:
+                m = re.match(r"^\$([0-9,]+(?:\.[0-9]+)?)$", text.strip())
+                if m:
+                    price = clean_price(m.group(1))
                     break
-        # Fallback: JSON in script tags
-        if not results:
-            results = _extract_json_generic(html, base)
+            if title and price and link:
+                results.append({"title": title, "price": price, "link": link})
     except Exception as e:
         print(f"[PARSER] auckland_mall: {e}")
     return results

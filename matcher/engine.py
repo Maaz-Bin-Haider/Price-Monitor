@@ -1,82 +1,3 @@
-# import re
-# from rapidfuzz import fuzz
-# from config import settings
-
-# # Words that indicate accessories/replacements — not the main product.
-# # If the query does NOT contain these words but the result title does,
-# # the result score is penalised heavily (dropped to 40%).
-# ACCESSORY_KEYWORDS = [
-#     # Physical accessories
-#     "cable", "mount", "bracket", "adaptor", "adapter", "case", "cover","power plug",
-#     "stand", "strap", "charger", "battery", "sleeve", "bag", "pouch",
-#     "hub", "dock", "skin", "bumper", "holster","Power Lead", "propellers",
-#     # Audio accessories
-#     "lens", "wide-angle lens", "wide angle lens", "nd filter", "filter set", "filters",
-#     "filter kit", "polarizer", "cpl filter", "telephoto", "lens cap",
-#     "ear pad", "ear pads", "earpads", "ear cushion", "cushion pads",
-#     "earbud tip", "ear tip", "ear tips", "foam tip", "wing tip",
-#     "replacement ear", "headband pad", "headband cover",
-#     # Display/camera accessories
-#     "screen protector", "tempered glass", "lens cap", "lens cover",
-#     "lens filter", "lens hood", "lens adapter", "filter kit",
-#     # Cables
-#     "ethernet cable", "power cable", "usb cable", "hdmi cable",
-#     "charging cable", "data cable", "extension cable",
-#     # Mounts / networking accessories
-#     "pole adaptor", "edge protector", "actuated cable", "power supply",
-#     "wall mount", "ceiling mount", "roof mount", "pipe mount","Extension",
-#     # General replacement parts
-#     "replacement", "spare part", "repair kit",
-# ]
-
-
-# def normalise(text: str) -> str:
-#     t = text.lower()
-#     t = re.sub(r"[^a-z0-9 ]", " ", t)
-#     t = re.sub(r"(\d+)(gb)", r"\1 gb", t)
-#     t = re.sub(r"(\d+)(tb)", r"\1 tb", t)
-#     t = re.sub(r"(\d+)(mb)", r"\1 mb", t)
-#     t = re.sub(r"\s+", " ", t).strip()
-#     return t
-
-
-# def _is_accessory(query: str, candidate: str) -> bool:
-#     """True if candidate contains an accessory keyword not in the query."""
-#     q = query.lower()
-#     c = candidate.lower()
-#     for kw in ACCESSORY_KEYWORDS:
-#         if kw in c and kw not in q:
-#             return True
-#     return False
-
-
-# def score(query: str, candidate: str) -> float:
-#     q = normalise(query)
-#     c = normalise(candidate)
-#     token_set = fuzz.token_set_ratio(q, c)
-#     partial   = fuzz.partial_ratio(q, c)
-#     base      = round(0.6 * token_set + 0.4 * partial, 1)
-#     if _is_accessory(query, candidate):
-#         base = base * 0.4
-#     return base
-
-
-# def filter_matches(
-#     query: str,
-#     candidates: list[dict],
-#     threshold: float = None,
-# ) -> list[dict]:
-#     if threshold is None:
-#         threshold = settings.MATCH_THRESHOLD
-#     scored = []
-#     for item in candidates:
-#         s = score(query, item.get("title", ""))
-#         if s >= threshold:
-#             scored.append({**item, "match_score": round(s, 1)})
-#     scored.sort(key=lambda x: x["match_score"], reverse=True)
-#     return scored
-
-
 import re
 from rapidfuzz import fuzz
 from config import settings
@@ -90,13 +11,15 @@ from config import settings
 STRONG_ACCESSORY_PHRASES = [
     # Replacement / repair
     "replacement", "spare part", "repair kit", "refurbished",
-    # Protection
+    # Protection — only when clearly an accessory case, not a product component
     "screen protector", "tempered glass", "privacy screen",
     "carrying case", "travel case", "hard case", "soft case",
-    "keyboard cover", "keyboard skin", "cooling pad",
+    "phone case", "airpods case", "ipad case", "tablet case",
+    "laptop case", "keyboard cover", "keyboard skin", "cooling pad",
     # Audio accessories
     "ear pad", "ear pads", "earpads", "ear cushion", "cushion pads",
-    "earbud tip", "ear tip", "ear tips", "foam tip", "wing tip",
+    "earbud tip", "earbud tips", "ear tip", "ear tips",
+    "foam tip", "foam tips", "wing tip", "wing tips",
     "replacement ear", "headband pad", "headband cover",
     # Camera accessories
     "lens cap", "lens cover", "lens hood", "lens filter",
@@ -107,7 +30,7 @@ STRONG_ACCESSORY_PHRASES = [
     "charging cable", "data cable", "extension cable", "power lead",
     # Mounts
     "wall mount", "ceiling mount", "roof mount", "pipe mount",
-    "pole adaptor", "edge protector",
+    "pole adaptor", "edge protector", "skidplate",
     # Gaming accessories
     "controller skin", "thumb grip",
     # Wearable accessories
@@ -123,7 +46,7 @@ STRONG_ACCESSORY_PHRASES = [
 WEAK_ACCESSORY_PHRASES = [
     # These could be the actual product
     "cable", "mount", "bracket", "adapter", "adaptor",
-    "case", "cover", "stand", "strap", "charger",
+    "stand", "strap", "charger",
     "battery", "sleeve", "bag", "pouch", "hub", "dock",
     "skin", "bumper", "holster", "lens", "filters",
     "power supply", "extension", "cushion",
@@ -136,8 +59,8 @@ WEAK_PENALTY   = 0.60   # 40% reduction — might be an accessory
 # Bundle indicators — if present, reduce accessory penalty
 # e.g. "Nintendo Switch OLED + Carrying Case" is still a valid product
 BUNDLE_INDICATORS = [
-    "bundle", "combo", "kit", "pack", "set", "fly more",
-    "starter kit", "value pack", "complete kit", "with",
+    "bundle", "combo", "fly more",
+    "starter kit", "value pack", "complete kit",
 ]
 
 
@@ -217,8 +140,8 @@ def _is_bundle(candidate: str) -> bool:
     for indicator in BUNDLE_INDICATORS:
         if _contains_phrase(c, indicator):
             return True
-    # Also detect "Product + Accessory" pattern
-    if "+" in candidate or "&" in candidate:
+    # Also detect "Product + Accessory" explicit bundle pattern
+    if " + " in candidate:
         return True
     return False
 
@@ -242,6 +165,13 @@ def _accessory_penalty(query: str, candidate: str) -> float:
 
     # If it's a bundle, reduce penalty significantly
     bundle = _is_bundle(candidate)
+
+    # Special rule: title ends with "case" and query doesn't contain "case"
+    # → almost certainly a protective case accessory
+    if c.endswith(" case") and not _contains_phrase(q, "case"):
+        if bundle:
+            return 0.70
+        return STRONG_PENALTY
 
     # ── Check STRONG phrases first (sorted longest first for specificity) ──
     # Fixes Issue 10: longer phrases checked before shorter ones
