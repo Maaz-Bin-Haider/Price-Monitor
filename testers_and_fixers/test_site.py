@@ -82,11 +82,11 @@ async def fetch_html(site: dict, product: str) -> tuple[str | None, str, int]:
     if site["tier"] == "heavy":
         params["super"] = "true"
     if site["tier"] in ("heavy", "medium"):
-        params["waitFor"] = "12000"
+        params["waitUntil"] = "networkidle0"
 
     print(f"\n  {DIM}Fetching: {url[:90]}{RESET}")
-    print(f"  {DIM}Scrape.do params: tier={site['tier']} render={'true' if 'render' in params else 'false'} super={'true' if 'super' in params else 'false'} waitFor={params.get('waitFor','—')} cache_bust={site.get('cache_bust', False)}{RESET}\n")
-
+    # print(f"  {DIM}Scrape.do params: tier={site['tier']} render={'true' if 'render' in params else 'false'} super={'true' if 'super' in params else 'false'} waitFor={params.get('waitFor','—')} cache_bust={site.get('cache_bust', False)}{RESET}\n")
+    print(f"  {DIM}Scrape.do params: tier={site['tier']} render={'true' if 'render' in params else 'false'} super={'true' if 'super' in params else 'false'} waitUntil={params.get('waitUntil','—')} cache_bust={site.get('cache_bust', False)}{RESET}\n")
     try:
         async with httpx.AsyncClient(timeout=90) as client:
             resp = await client.get("https://api.scrape.do", params=params)

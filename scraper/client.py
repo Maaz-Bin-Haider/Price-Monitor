@@ -22,7 +22,7 @@ async def fetch_page(url: str, tier: str, geo: str) -> str | None:
         params["super"] = "true"
     # Give JS-heavy sites extra time to load dynamic content
     if tier in ("heavy", "medium"):
-        params["waitFor"] = "12000"
+        params["waitUntil"] = "networkidle0"
 
     async with _semaphore:
         try:
