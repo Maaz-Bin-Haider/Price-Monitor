@@ -176,8 +176,11 @@ SITES = [
     {
         "name": "Jacobs Digital",
         "domain": "jacobsdigital.co.nz",
-        "tier": "light",
+        "tier": "medium",
         "geo": "nz",
+        # Jacobs Digital uses Boost Commerce (bc-sf-filter) — products are loaded
+        # entirely via JS/XHR after page load. Requires JS rendering (medium tier)
+        # so Boost PFS executes and injects product cards into the DOM.
         "search_url": "https://www.jacobsdigital.co.nz/search?type=product&q={query}",
     },
 ]

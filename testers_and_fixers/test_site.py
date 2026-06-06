@@ -84,7 +84,7 @@ async def fetch_html(site: dict, product: str) -> tuple[str | None, str, int]:
     if site["tier"] in ("heavy", "medium"):
         params["waitUntil"] = "networkidle0"
 
-    print(f"\n  {DIM}Fetching: {url[:90]}{RESET}")
+    print(f"  {DIM}Fetching: {url}{RESET}")
     # print(f"  {DIM}Scrape.do params: tier={site['tier']} render={'true' if 'render' in params else 'false'} super={'true' if 'super' in params else 'false'} waitFor={params.get('waitFor','—')} cache_bust={site.get('cache_bust', False)}{RESET}\n")
     print(f"  {DIM}Scrape.do params: tier={site['tier']} render={'true' if 'render' in params else 'false'} super={'true' if 'super' in params else 'false'} waitUntil={params.get('waitUntil','—')} cache_bust={site.get('cache_bust', False)}{RESET}\n")
     try:
@@ -134,7 +134,7 @@ async def test_site(domain: str, product: str, threshold: float, raw_mode: bool 
     html, url, status_code = await fetch_html(site, product)
     elapsed = asyncio.get_event_loop().time() - start
 
-    print(f"  URL        : {url[:85]}")
+    print(f"  URL        : {url}")
     print(f"  HTTP Status: ", end="")
     if status_code == 200:
         print(f"{GREEN}{status_code} OK{RESET}")
@@ -252,7 +252,7 @@ async def test_site(domain: str, product: str, threshold: float, raw_mode: bool 
                 print(f"\n  {BOLD}{i}.{RESET} {color}[{bar}] {score_val}%{RESET}")
                 print(f"     Title : {m.get('title', '—')[:70]}")
                 print(f"     Price : {GREEN}${m.get('price', 0):.2f}{RESET}")
-                print(f"     Link  : {DIM}{m.get('link', '—')[:80]}{RESET}")
+                print(f"     Link  : {DIM}{m.get('link', '—')}{RESET}")
             print_separator("·")
 
     # ── Summary ───────────────────────────────────────────────────────────────
@@ -267,7 +267,7 @@ async def test_site(domain: str, product: str, threshold: float, raw_mode: bool 
         if matched:
             best = matched[0]
             print(f"  Best match : ${best['price']:.2f}  [{best['match_score']}%]  {best['title'][:50]}")
-            print(f"  Best link  : {best['link'][:80]}")
+            print(f"  Best link  : {best['link']}")
             verdict = f"{GREEN}✓ WORKING{RESET}"
         else:
             verdict = f"{YELLOW}~ FETCH+PARSE OK — no matches (try lower threshold or different product){RESET}"

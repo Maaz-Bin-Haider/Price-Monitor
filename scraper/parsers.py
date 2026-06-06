@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup
 SITE_PARSERS = {
     "jbhifi.com.au":         {"_type": "shopify",       "base": "https://www.jbhifi.com.au"},
     "jbhifi.co.nz":          {"_type": "shopify",       "base": "https://www.jbhifi.co.nz"},
+    # jacobsdigital uses Boost Commerce (bc-sf-filter) — called directly as a JSON API
     "thegoodguys.com.au":    {"_type": "goodguys"},
     "harveynorman.com.au":   {"_type": "harveynorman",  "base": "https://www.harveynorman.com.au"},
     "harveynorman.co.nz":    {"_type": "cscart",        "base": "https://www.harveynorman.co.nz"},
@@ -28,7 +29,7 @@ SITE_PARSERS = {
     "rubbermonkey.co.nz":    {"_type": "rubbermonkey",  "base": "https://www.rubbermonkey.co.nz"},
     "photogear.co.nz":       {"_type": "klevu",        "base": "https://photogear.co.nz"},
     "photowarehouse.co.nz":  {"_type": "photowarehouse", "base": "https://www.photowarehouse.co.nz"},
-    "jacobsdigital.co.nz":   {"_type": "shopify",       "base": "https://www.jacobsdigital.co.nz"},
+    "jacobsdigital.co.nz":   {"_type": "boostcommerce", "base": "https://www.jacobsdigital.co.nz"},
 }
 
 
@@ -693,7 +694,61 @@ def _photowarehouse(html, base, **_):
     return results
 
 
+# ── Boost Commerce / bc-sf-filter (Jacobs Digital) ───────────────────────
+def _boostcommerce(html, base, **_):
+    """
+    Jacobs Digital uses Boost Commerce (bc-sf-filter) for search.
+    Requires medium tier (JS rendering) so Boost PFS executes and injects cards.
+
+    Rendered card structure (confirmed from live medium-tier HTML):
+
+        <div class="boost-pfs-filter-products">
+          <div class="row search-result" data-id="...">
+            <div class="col-12 col-lg-5">
+              <p class="product-title">
+                <a href="/collections/all/products/{handle}">Product Name</a>
+              </p>
+            </div>
+            <div class="col-12 col-lg-4">
+              <li><span class="product-price">$5,334.00</span></li>
+            </div>
+          </div>
+        </div>
+    """
+    results = []
+    try:
+        soup = BeautifulSoup(html, "lxml")
+
+        # Each search result is div.row.search-result inside .boost-pfs-filter-products
+        container = soup.select_one(".boost-pfs-filter-products")
+        cards = (container or soup).select("div.row.search-result")
+
+        for card in cards[:24]:
+            # Title: p.product-title > a
+            title_el = card.select_one("p.product-title a") or card.select_one("p.product-title")
+            title = title_el.get_text(strip=True) if title_el else ""
+
+            # Link: any a href pointing to a product
+            link_el = card.select_one("a[href*='/products/']")
+            href = link_el.get("href", "") if link_el else ""
+            link = abs_url(href, base)
+
+            # Price: span.product-price
+            price_el = card.select_one("span.product-price")
+            price = clean_price(price_el.get_text() if price_el else "")
+
+            if title and price and link:
+                results.append({"title": title, "price": price, "link": link})
+
+    except Exception as e:
+        print(f"[PARSER] boostcommerce (jacobsdigital): {e}")
+
+    return results
+
+
+
 _EXTRACTORS = {
+    "boostcommerce": _boostcommerce,
     "klevu":          _klevu,
     "photowarehouse": _photowarehouse,
     "shopify":      _shopify,
