@@ -541,7 +541,9 @@
     body.append('username', username);
     body.append('password', password);
     body.append('email',    email);
-    body.append('is_admin', is_admin);
+    // Only append is_admin when checked — matches HTML checkbox behaviour
+    // Server receives "on" when ticked, nothing when unticked
+    if (is_admin) body.append('is_admin', 'on');
 
     const res = await fetch('/auth/admin/users', { method: 'POST', body });
     if (res.ok) {

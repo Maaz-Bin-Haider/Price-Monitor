@@ -134,9 +134,19 @@ async def admin_create_user(
     username: str           = Form(...),
     password: str           = Form(...),
     email:    Optional[str] = Form(None),
-    is_admin: bool          = Form(False),
+    # HTML checkboxes send "on" when ticked and nothing when unticked.
+    # Declaring as bool causes FastAPI to reject missing values with 422.
+    # We read it as an optional string and convert manually.
+    is_admin_raw: Optional[str] = Form(None, alias="is_admin"),
 ):
     admin = require_admin(request)
+
+    # Normalise the checkbox value
+    is_admin = is_admin_raw in ("on", "true", "True", "1", True)
+
+    username = username.strip()
+    if not username:
+        raise HTTPException(status_code=400, detail="Username cannot be empty")
     if len(password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
 
@@ -148,15 +158,20 @@ async def admin_create_user(
             db         = db,
             username   = username,
             password   = password,
-            email      = email or None,
+            email      = email.strip() if email else None,
             is_admin   = is_admin,
             created_by = admin["username"],
         )
+        return JSONResponse(
+            {"id": user.id, "username": user.username, "is_admin": user.is_admin},
+            status_code=201,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create user: {e}")
     finally:
         db.close()
-
-    return JSONResponse({"id": user.id, "username": user.username, "is_admin": user.is_admin},
-                        status_code=201)
 
 
 # ── Admin API: toggle active ───────────────────────────────────────────────────
