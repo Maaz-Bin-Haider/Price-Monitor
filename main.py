@@ -35,7 +35,18 @@ from scheduler import (
 )
 from scraper.runner import run_search, run_availability_search
 
+# ── Auth ───────────────────────────────────────────────────────────────────
+from auth_middleware import AuthMiddleware
+from auth_router import auth_router
+import auth_models  # noqa — registers AuthUser/AuthLoginAttempt with SQLAlchemy Base
+
 app = FastAPI(title="Price Monitor")
+
+# Login wall — must be added BEFORE any routes are registered
+app.add_middleware(AuthMiddleware)
+
+# Auth routes: /login  /auth/login  /auth/logout  /admin  /auth/admin/*
+app.include_router(auth_router)
 
 # ── Templates ──────────────────────────────────────────────────────────────
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
@@ -100,10 +111,30 @@ templates.env.filters["site_names_from_domains"] = _site_names_from_domains
 # ── Startup / Shutdown ─────────────────────────────────────────────────────
 @app.on_event("startup")
 async def startup_event():
+    # Create all tables: existing (watchlist_jobs etc.) + new auth tables
     Base.metadata.create_all(bind=engine)
     restore_all_jobs()
     get_scheduler().start()
     print("[APP] Price Monitor started")
+
+    # ── Seed first admin if no users exist ────────────────────────────────
+    from db.models import SessionLocal
+    from auth import list_users, create_user
+    db = SessionLocal()
+    try:
+        if not list_users(db):
+            create_user(
+                db         = db,
+                username   = "admin",
+                password   = "ChangeMe123!",   # ← change this after first login
+                email      = None,
+                is_admin   = True,
+                created_by = "system",
+            )
+            print("[AUTH] First admin created  username=admin  password=ChangeMe123!")
+            print("[AUTH] ⚠  Change this password immediately via /admin")
+    finally:
+        db.close()
 
 
 @app.on_event("shutdown")
