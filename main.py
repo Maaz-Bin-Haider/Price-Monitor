@@ -117,24 +117,46 @@ async def startup_event():
     get_scheduler().start()
     print("[APP] Price Monitor started")
 
+    # # ── Seed first admin if no users exist ────────────────────────────────
+    # from db.models import SessionLocal
+    # from auth import list_users, create_user
+    # db = SessionLocal()
+    # try:
+    #     if not list_users(db):
+    #         create_user(
+    #             db         = db,
+    #             username   = "admin",
+    #             password   = "ChangeMe123!",   # ← change this after first login
+    #             email      = None,
+    #             is_admin   = True,
+    #             created_by = "system",
+    #         )
+    #         print("[AUTH] First admin created  username=admin  password=ChangeMe123!")
+    #         print("[AUTH] ⚠  Change this password immediately via /admin")
+    # finally:
+    #     db.close()
+    # WITH this:
     # ── Seed first admin if no users exist ────────────────────────────────
-    from db.models import SessionLocal
-    from auth import list_users, create_user
-    db = SessionLocal()
     try:
-        if not list_users(db):
-            create_user(
-                db         = db,
-                username   = "admin",
-                password   = "ChangeMe123!",   # ← change this after first login
-                email      = None,
-                is_admin   = True,
-                created_by = "system",
-            )
-            print("[AUTH] First admin created  username=admin  password=ChangeMe123!")
-            print("[AUTH] ⚠  Change this password immediately via /admin")
-    finally:
-        db.close()
+        from db.models import SessionLocal
+        from auth import list_users, create_user
+        _db = SessionLocal()
+        try:
+            if not list_users(_db):
+                create_user(
+                    db         = _db,
+                    username   = "admin",
+                    password   = "Admin1234",
+                    email      = None,
+                    is_admin   = True,
+                    created_by = "system",
+                )
+                print("[AUTH] First admin created  username=admin  password=Admin1234")
+                print("[AUTH] Change this password immediately via /admin")
+        finally:
+            _db.close()
+    except Exception as _e:
+        print(f"[AUTH] Warning: could not seed admin user: {_e}")
 
 
 @app.on_event("shutdown")
