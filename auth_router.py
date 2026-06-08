@@ -64,6 +64,14 @@ async def login_submit(
     ip  = _client_ip(request)
     try:
         user, error = authenticate_user(db, ip, username, password)
+        # Read attributes while session is still open — accessing them after
+        # db.close() causes DetachedInstanceError (SQLAlchemy expires on close)
+        if user:
+            _username = user.username
+            _is_admin = user.is_admin
+        else:
+            _username = None
+            _is_admin = False
     finally:
         db.close()
 
@@ -74,8 +82,8 @@ async def login_submit(
             status_code=401,
         )
 
-    token    = create_access_token(user.username, user.is_admin)
-    redirect = "/admin" if user.is_admin else "/"
+    token    = create_access_token(_username, _is_admin)
+    redirect = "/admin" if _is_admin else "/"
     response = RedirectResponse(url=redirect, status_code=302)
     response.set_cookie(
         key      = COOKIE_NAME,
