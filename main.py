@@ -53,6 +53,9 @@ app.add_middleware(AuthMiddleware)
 # Auth routes: /login  /auth/login  /auth/logout  /admin  /auth/admin/*
 app.include_router(auth_router)
 
+# Analytics routes: /analytics/products  /analytics/users  /analytics/sites
+app.include_router(analytics_router)
+
 # ── Templates ──────────────────────────────────────────────────────────────
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
 
