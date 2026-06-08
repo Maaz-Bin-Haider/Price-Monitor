@@ -440,14 +440,32 @@
       </div>
     </div>
 
-    <!-- Unlock IP -->
+    <!-- Blocked IPs -->
     <div class="panel">
       <div class="panel-header">
-        <span class="panel-title">Unlock Blocked IP</span>
+        <span class="panel-title">Blocked IPs</span>
+        <button class="btn btn-sm" onclick="loadLockedIPs()" style="background:none;border:1px solid var(--border);color:var(--muted);">&#8635; Refresh</button>
       </div>
-      <div class="unlock-row">
-        <input type="text" id="unlock-ip" placeholder="e.g. 203.0.113.42">
-        <button class="btn btn-warn" onclick="unlockIP()">Unlock IP</button>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>IP Address</th>
+              <th>Failed Attempts</th>
+              <th>Status</th>
+              <th>Blocked Until</th>
+              <th>Last Attempt</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="ips-tbody">
+            <tr><td colspan="6" class="empty-state">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="padding: 16px 24px; border-top: 1px solid var(--border); display:flex; gap:12px; align-items:center;">
+        <input type="text" id="unlock-ip" placeholder="Or manually enter IP to unlock" style="max-width:280px;">
+        <button class="btn btn-warn btn-sm" onclick="unlockManual()">Unlock IP</button>
       </div>
     </div>
 
@@ -574,23 +592,64 @@
     else        { const d = await res.json().catch(()=>({})); showToast(d.detail || 'Failed to delete', true); }
   }
 
-  // ── Unlock IP ──────────────────────────────────────────────────────────────
-  async function unlockIP() {
-    const ip = document.getElementById('unlock-ip').value.trim();
-    if (!ip) { showToast('Enter an IP address', true); return; }
+  // ── Load locked IPs ────────────────────────────────────────────────────────
+  async function loadLockedIPs() {
+    const tbody = document.getElementById('ips-tbody');
+    try {
+      const res  = await fetch('/auth/admin/locked-ips');
+      if (!res.ok) throw new Error('Failed');
+      const rows = await res.json();
+
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No blocked or failed IPs.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = rows.map(r => `
+        <tr>
+          <td><code style="font-family:var(--mono);font-size:12px">${esc(r.ip)}</code></td>
+          <td>${r.attempts}</td>
+          <td>${r.is_locked
+            ? '<span class="badge badge-red">Blocked</span>'
+            : '<span class="badge badge-muted">Failed (not blocked)</span>'}</td>
+          <td>${r.locked_until || '—'}</td>
+          <td>${r.last_attempt || '—'}</td>
+          <td>
+            ${r.is_locked
+              ? `<button class="btn btn-warn btn-sm" onclick="unlockIP('${esc(r.ip)}')">Unlock</button>`
+              : '—'}
+          </td>
+        </tr>
+      `).join('');
+    } catch(e) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-state" style="color:var(--danger)">Error loading IPs</td></tr>';
+    }
+  }
+
+  // ── Unlock IP (called from table row button) ────────────────────────────────
+  async function unlockIP(ip) {
     const body = new FormData();
     body.append('ip', ip);
     const res = await fetch('/auth/admin/unlock-ip', { method: 'POST', body });
     if (res.ok) {
-      showToast(`IP ${ip} has been unlocked`);
-      document.getElementById('unlock-ip').value = '';
+      showToast(`IP ${ip} has been unblocked`);
+      loadLockedIPs();
     } else {
       showToast('Failed to unlock IP', true);
     }
   }
 
+  // ── Manual unlock (text input) ──────────────────────────────────────────────
+  async function unlockManual() {
+    const ip = document.getElementById('unlock-ip').value.trim();
+    if (!ip) { showToast('Enter an IP address', true); return; }
+    await unlockIP(ip);
+    document.getElementById('unlock-ip').value = '';
+  }
+
   // Init
   loadUsers();
+  loadLockedIPs();
 </script>
 </body>
 </html>

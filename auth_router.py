@@ -5,6 +5,7 @@
 # same pattern as the rest of your project.
 
 from typing import Optional
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, Form, Request, HTTPException, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -219,11 +220,14 @@ async def admin_locked_ips(request: Request):
         rows = list_locked_ips(db)
     finally:
         db.close()
+    now = datetime.utcnow()
     return JSONResponse([
         {
             "ip":           r.ip_address,
             "attempts":     r.attempt_count,
+            "is_locked":    bool(r.locked_until and r.locked_until > now),
             "locked_until": r.locked_until.strftime("%Y-%m-%d %H:%M UTC") if r.locked_until else None,
+            "last_attempt": r.last_attempt.strftime("%Y-%m-%d %H:%M UTC") if r.last_attempt else None,
         }
         for r in rows
     ])
@@ -234,6 +238,7 @@ async def admin_locked_ips(request: Request):
 @auth_router.post("/auth/admin/unlock-ip")
 async def admin_unlock_ip(request: Request, ip: str = Form(...)):
     require_admin(request)
+    ip = ip.strip()
     db = SessionLocal()
     try:
         unlock_ip(db, ip)

@@ -53,6 +53,7 @@ def decode_token(token: str) -> Optional[dict]:
 # ── Brute-force protection ─────────────────────────────────────────────────────
 
 def is_ip_locked(db: Session, ip: str) -> bool:
+    ip  = _clean_ip(ip)
     row = db.query(AuthLoginAttempt).filter_by(ip_address=ip).first()
     if row is None:
         return False
@@ -60,12 +61,27 @@ def is_ip_locked(db: Session, ip: str) -> bool:
         return True
     return False
 
+def _clean_ip(ip: str) -> str:
+    """Strip port number and whitespace from IP string.
+    e.g. '1.2.3.4:56789' -> '1.2.3.4', ' ::1 ' -> '::1'
+    """
+    ip = ip.strip()
+    # IPv4 with port: "1.2.3.4:1234"
+    if ip.count(':') == 1:
+        ip = ip.split(':')[0]
+    # IPv6 with port: "[::1]:1234"
+    if ip.startswith('['):
+        ip = ip.split(']')[0].lstrip('[')
+    return ip
+
+
 def record_failed_attempt(db: Session, ip: str) -> int:
     """
     Increments the counter for this IP.
     Locks the IP for LOCKOUT_HOURS once MAX_ATTEMPTS is reached.
     Returns the new attempt count.
     """
+    ip  = _clean_ip(ip)
     now = datetime.utcnow()
     row = db.query(AuthLoginAttempt).filter_by(ip_address=ip).first()
     if row is None:
@@ -83,6 +99,7 @@ def record_failed_attempt(db: Session, ip: str) -> int:
 
 def clear_failed_attempts(db: Session, ip: str) -> None:
     """Called after a successful login — resets the counter."""
+    ip  = _clean_ip(ip)
     row = db.query(AuthLoginAttempt).filter_by(ip_address=ip).first()
     if row:
         row.attempt_count = 0
@@ -91,7 +108,12 @@ def clear_failed_attempts(db: Session, ip: str) -> None:
 
 def unlock_ip(db: Session, ip: str) -> None:
     """Admin manually unlocks a blocked IP."""
+    ip  = _clean_ip(ip)
     row = db.query(AuthLoginAttempt).filter_by(ip_address=ip).first()
+    if row is None:
+        # Try partial match in case IP was stored with/without port
+        rows = db.query(AuthLoginAttempt).all()
+        row  = next((r for r in rows if _clean_ip(r.ip_address) == ip), None)
     if row:
         row.attempt_count = 0
         row.locked_until  = None
@@ -156,7 +178,10 @@ def delete_user_by_id(db: Session, user_id: int) -> bool:
     return False
 
 def list_locked_ips(db: Session):
+    """Returns all currently locked IPs. Also returns recently failed IPs for visibility."""
     now = datetime.utcnow()
+    # Return both actively locked AND recently failed (attempt_count > 0) rows
     return db.query(AuthLoginAttempt).filter(
-        AuthLoginAttempt.locked_until > now
-    ).all()
+        (AuthLoginAttempt.locked_until > now) |
+        (AuthLoginAttempt.attempt_count > 0)
+    ).order_by(AuthLoginAttempt.last_attempt.desc()).all()
