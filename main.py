@@ -40,6 +40,11 @@ from auth_middleware import AuthMiddleware
 from auth_router import auth_router
 import auth_models  # noqa — registers AuthUser/AuthLoginAttempt with SQLAlchemy Base
 
+# ── Analytics ──────────────────────────────────────────────────────────────
+from analytics_router import analytics_router
+import analytics_models  # noqa — registers ActivityLog with Base
+from analytics import log_activity
+
 app = FastAPI(title="Price Monitor")
 
 # Login wall — must be added BEFORE any routes are registered
@@ -113,50 +118,42 @@ templates.env.filters["site_names_from_domains"] = _site_names_from_domains
 async def startup_event():
     # Create all tables: existing (watchlist_jobs etc.) + new auth tables
     Base.metadata.create_all(bind=engine)
+
+    # ── Add created_by_username column to watchlist_jobs if not present ────
+    # This is a one-time migration — safe to run on every startup.
+    try:
+        from sqlalchemy import text as _text
+        with engine.connect() as _conn:
+            _conn.execute(_text(
+                "ALTER TABLE watchlist_jobs ADD COLUMN IF NOT EXISTS "
+                "created_by_username VARCHAR(64) DEFAULT 'unknown'"
+            ))
+            _conn.commit()
+    except Exception as _e:
+        print(f"[MIGRATE] created_by_username column: {_e}")
+
     restore_all_jobs()
     get_scheduler().start()
     print("[APP] Price Monitor started")
 
-    # # ── Seed first admin if no users exist ────────────────────────────────
-    # from db.models import SessionLocal
-    # from auth import list_users, create_user
-    # db = SessionLocal()
-    # try:
-    #     if not list_users(db):
-    #         create_user(
-    #             db         = db,
-    #             username   = "admin",
-    #             password   = "ChangeMe123!",   # ← change this after first login
-    #             email      = None,
-    #             is_admin   = True,
-    #             created_by = "system",
-    #         )
-    #         print("[AUTH] First admin created  username=admin  password=ChangeMe123!")
-    #         print("[AUTH] ⚠  Change this password immediately via /admin")
-    # finally:
-    #     db.close()
-    # WITH this:
     # ── Seed first admin if no users exist ────────────────────────────────
+    from db.models import SessionLocal
+    from auth import list_users, create_user
+    db = SessionLocal()
     try:
-        from db.models import SessionLocal
-        from auth import list_users, create_user
-        _db = SessionLocal()
-        try:
-            if not list_users(_db):
-                create_user(
-                    db         = _db,
-                    username   = "admin",
-                    password   = "Admin1234",
-                    email      = None,
-                    is_admin   = True,
-                    created_by = "system",
-                )
-                print("[AUTH] First admin created  username=admin  password=Admin1234")
-                print("[AUTH] Change this password immediately via /admin")
-        finally:
-            _db.close()
-    except Exception as _e:
-        print(f"[AUTH] Warning: could not seed admin user: {_e}")
+        if not list_users(db):
+            create_user(
+                db         = db,
+                username   = "admin",
+                password   = "ChangeMe123!",   # ← change this after first login
+                email      = None,
+                is_admin   = True,
+                created_by = "system",
+            )
+            print("[AUTH] First admin created  username=admin  password=ChangeMe123!")
+            print("[AUTH] ⚠  Change this password immediately via /admin")
+    finally:
+        db.close()
 
 
 @app.on_event("shutdown")
@@ -205,6 +202,9 @@ async def add_submit(
             "error": "Please select at least one site.",
         }, status_code=400)
 
+    # Capture the logged-in username for attribution
+    _creator = getattr(request.state, "username", "unknown")
+
     job = create_job({
         "job_type": "price_watch",
         "product_name": product_name,
@@ -212,10 +212,18 @@ async def add_submit(
         "user_email": user_email,
         "schedule_interval": schedule_interval,
         "selected_sites": selected_sites,
+        "created_by_username": _creator,
     })
 
     if job:
         register_job(job)
+        log_activity(
+            username   = _creator,
+            event_type = "job_created",
+            detail     = f"Price watch: {product_name} (target ${target_price})",
+            ip_address = request.headers.get("x-real-ip") or request.headers.get("cf-connecting-ip") or (request.client.host if request.client else None),
+            job_id     = job.id,
+        )
 
     return RedirectResponse(url="/", status_code=303)
 
@@ -251,6 +259,8 @@ async def add_scout_submit(
             "error": "Please select at least one site.",
         }, status_code=400)
 
+    _creator = getattr(request.state, "username", "unknown")
+
     job = create_job({
         "job_type": "availability_scout",
         "product_name": product_name,
@@ -258,10 +268,18 @@ async def add_scout_submit(
         "user_email": user_email,
         "schedule_interval": schedule_interval,
         "selected_sites": selected_sites,
+        "created_by_username": _creator,
     })
 
     if job:
         register_job(job)
+        log_activity(
+            username   = _creator,
+            event_type = "job_created",
+            detail     = f"Availability scout: {product_name}",
+            ip_address = request.headers.get("x-real-ip") or request.headers.get("cf-connecting-ip") or (request.client.host if request.client else None),
+            job_id     = job.id,
+        )
 
     return RedirectResponse(url="/", status_code=303)
 
@@ -352,6 +370,14 @@ async def run_now(job_id: int):
     next_run = _get_next_run_time(job.schedule_interval if job else "24h")
     update_last_run(job_id, result.get("lowest_price"), next_run)
 
+    # Log the manual run
+    log_activity(
+        username   = "system",   # run_now has no request auth context easily accessible
+        event_type = "job_run_now",
+        detail     = f"Manual run triggered for job #{job_id}",
+        job_id     = job_id,
+    )
+
     return JSONResponse({"run_id": run.id, "job_id": job_id})
 
 
@@ -395,13 +421,30 @@ async def edit_submit(
     if job:
         register_job(job)
 
+    log_activity(
+        username   = getattr(request.state, "username", "unknown"),
+        event_type = "job_edited",
+        detail     = f"Edited job: {product_name}",
+        ip_address = request.headers.get("x-real-ip") or request.headers.get("cf-connecting-ip") or (request.client.host if request.client else None),
+        job_id     = job_id,
+    )
     return RedirectResponse(url=f"/job/{job_id}", status_code=303)
 
 
 @app.post("/job/{job_id}/delete")
-async def delete_job(job_id: int):
+async def delete_job(job_id: int, request: Request):
+    _job = get_job_by_id(job_id)
+    _name = _job.product_name if _job else f"#{job_id}"
+    _actor = getattr(request.state, "username", "unknown")
     soft_delete_job(job_id)
     cancel_job(job_id)
+    log_activity(
+        username   = _actor,
+        event_type = "job_deleted",
+        detail     = f"Deleted job: {_name}",
+        ip_address = request.headers.get("x-real-ip") or request.headers.get("cf-connecting-ip") or (request.client.host if request.client else None),
+        job_id     = job_id,
+    )
     return RedirectResponse(url="/", status_code=303)
 
 

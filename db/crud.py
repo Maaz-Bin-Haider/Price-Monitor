@@ -56,6 +56,7 @@ def create_job(data: dict) -> Optional[WatchlistJob]:
             selected_sites=selected,
             alert_sent=False,
             is_active=True,
+            created_by_username=data.get("created_by_username", "unknown"),
         )
         db.add(job)
         db.commit()

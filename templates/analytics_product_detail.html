@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Product Detail — Price Monitor Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0a0c10;--surface:#111318;--border:#1e2230;--accent:#00e5a0;--accent2:#0080ff;--danger:#ff4757;--warn:#ffa502;--text:#e8eaf0;--muted:#5a6070;--mono:'DM Mono',monospace;--display:'Syne',sans-serif;}
+  html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--mono);}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:40px 40px;opacity:.2;pointer-events:none;z-index:0;}
+  .layout{position:relative;z-index:1;display:flex;min-height:100vh;}
+  .sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:32px 0;flex-shrink:0;position:sticky;top:0;height:100vh;}
+  .sidebar-brand{padding:0 24px 32px;border-bottom:1px solid var(--border);margin-bottom:24px;}
+  .sidebar-brand .label{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--accent);font-family:var(--display);font-weight:700;}
+  .sidebar-brand .title{font-family:var(--display);font-size:20px;font-weight:800;margin-top:4px;}
+  .nav-section{padding:0 24px 8px;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-top:16px;}
+  .nav-item{padding:10px 24px;font-size:12px;letter-spacing:.08em;color:var(--muted);border-left:2px solid transparent;text-decoration:none;display:block;transition:all .2s;}
+  .nav-item:hover,.nav-item.active{color:var(--text);background:rgba(0,229,160,.04);border-left-color:var(--accent);}
+  .sidebar-bottom{margin-top:auto;padding:24px;border-top:1px solid var(--border);}
+  .logout-btn{width:100%;padding:10px;background:none;border:1px solid var(--border);border-radius:3px;color:var(--muted);font-family:var(--mono);font-size:12px;cursor:pointer;text-align:center;text-decoration:none;display:block;transition:all .2s;}
+  .logout-btn:hover{color:var(--danger);border-color:var(--danger);}
+  .main{flex:1;padding:40px 48px;overflow-y:auto;}
+  .back-link{display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:12px;text-decoration:none;margin-bottom:24px;transition:color .2s;}
+  .back-link:hover{color:var(--accent);}
+  h1{font-family:var(--display);font-size:28px;font-weight:800;margin-bottom:6px;line-height:1.2;}
+  .meta{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:32px;margin-top:12px;}
+  .meta-item{font-size:11px;color:var(--muted);}
+  .meta-item span{color:var(--text);}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px;}
+  @media(max-width:900px){.grid-2{grid-template-columns:1fr;}}
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:24px;}
+  .panel-header{padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+  .panel-title{font-family:var(--display);font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;}
+  .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;}
+  .info-row{padding:12px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:12px;}
+  .info-row:last-child{border-bottom:none;}
+  .info-row .key{color:var(--muted);}
+  .info-row .val{color:var(--text);font-weight:500;text-align:right;}
+  .chart-wrap{padding:24px;height:220px;position:relative;}
+  .badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;}
+  .badge-green{background:rgba(0,229,160,.12);color:var(--accent);}
+  .badge-blue{background:rgba(0,128,255,.12);color:var(--accent2);}
+  .badge-warn{background:rgba(255,165,2,.12);color:var(--warn);}
+  .badge-red{background:rgba(255,71,87,.12);color:var(--danger);}
+  .badge-muted{background:rgba(90,96,112,.15);color:var(--muted);}
+  .table-wrap{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:12px;}
+  thead th{padding:10px 16px;text-align:left;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);font-weight:400;white-space:nowrap;}
+  tbody tr{border-bottom:1px solid var(--border);}
+  tbody tr:last-child{border-bottom:none;}
+  tbody tr:hover{background:rgba(255,255,255,.02);}
+  td{padding:11px 16px;vertical-align:middle;}
+  .price{color:var(--accent);font-weight:500;}
+  .empty-state{padding:40px;text-align:center;color:var(--muted);}
+  .sites-list{display:flex;flex-wrap:wrap;gap:6px;padding:16px 24px;}
+  .site-tag{padding:4px 10px;background:rgba(0,128,255,.08);border:1px solid rgba(0,128,255,.2);border-radius:3px;font-size:11px;color:var(--accent2);}
+  .hits-list{font-size:11px;}
+  .hits-list div{padding:3px 0;color:var(--muted);}
+  .hits-list div span{color:var(--accent);}
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="label">Admin Panel</div>
+      <div class="title">Price Monitor</div>
+    </div>
+    <nav>
+      <div class="nav-section">Management</div>
+      <a class="nav-item" href="/admin">&#9632; Users</a>
+      <div class="nav-section">Analytics</div>
+      <a class="nav-item active" href="/analytics/products">&#9670; Products</a>
+      <a class="nav-item" href="/analytics/users">&#9670; User Activity</a>
+      <a class="nav-item" href="/analytics/sites">&#9670; Site Performance</a>
+      <div class="nav-section">App</div>
+      <a class="nav-item" href="/">&#8599; Go to App</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <a class="logout-btn" href="/auth/logout">Sign Out</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <a class="back-link" href="/analytics/products">&#8592; Back to Products</a>
+    <h1 id="product-title">Loading…</h1>
+    <div class="meta" id="meta"></div>
+
+    <div class="grid-2">
+      <!-- Job info -->
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">Job Details</span></div>
+        <div id="job-info"></div>
+      </div>
+      <!-- Price trend -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">Price Trend</span>
+          <span id="trend-count" style="font-size:11px;color:var(--muted)"></span>
+        </div>
+        <div class="chart-wrap"><canvas id="price-chart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Sites monitored -->
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">Sites Monitored</span></div>
+      <div class="sites-list" id="sites-list"></div>
+    </div>
+
+    <!-- Alert history -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Alert History</span>
+        <span id="alert-count" style="font-size:11px;color:var(--muted)"></span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Sent At</th><th>Email</th><th>Lowest Price</th><th>Status</th></tr></thead>
+          <tbody id="alerts-tbody"><tr><td colspan="4" class="empty-state">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Run history -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Run History</span>
+        <span id="run-count" style="font-size:11px;color:var(--muted)"></span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Started</th><th>Type</th><th>Lowest Price</th><th>Best Site</th><th>Alert</th><th>Errors</th><th>Top Findings</th></tr></thead>
+          <tbody id="runs-tbody"><tr><td colspan="7" class="empty-state">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  const jobId = parseInt(location.pathname.split('/').pop());
+  let priceChart = null;
+
+  function esc(s) {
+    const d = document.createElement('div');
+    d.textContent = String(s || '');
+    return d.innerHTML;
+  }
+
+  async function load() {
+    const res  = await fetch(`/analytics/api/products/${jobId}`);
+    if (!res.ok) { document.getElementById('product-title').textContent = 'Product not found'; return; }
+    const { job, runs, alerts, trend } = await res.json();
+
+    // Header
+    document.title = job.product_name + ' — Admin';
+    document.getElementById('product-title').textContent = job.product_name;
+    document.getElementById('meta').innerHTML = `
+      <div class="meta-item">Type: <span>${job.job_type === 'price_watch' ? 'Price Watch' : 'Availability Scout'}</span></div>
+      <div class="meta-item">ID: <span>#${job.id}</span></div>
+      <div class="meta-item">Added: <span>${job.created_at || '—'}</span></div>
+      <div class="meta-item">Added by: <span>${esc(job.created_by)}</span></div>
+      <div class="meta-item">Status: <span>${job.is_active ? 'Active' : 'Deleted'}</span></div>
+    `;
+
+    // Job info
+    document.getElementById('job-info').innerHTML = `
+      <div class="info-row"><span class="key">Notify Email</span><span class="val">${esc(job.user_email)}</span></div>
+      <div class="info-row"><span class="key">Target Price</span><span class="val">${job.target_price ? '$' + job.target_price.toFixed(2) : '—'}</span></div>
+      <div class="info-row"><span class="key">Schedule</span><span class="val">${job.schedule}</span></div>
+      <div class="info-row"><span class="key">Last Run</span><span class="val">${job.last_run_at || 'Never'}</span></div>
+      <div class="info-row"><span class="key">Lowest Found</span><span class="val">${job.last_lowest_price ? '$' + job.last_lowest_price.toFixed(2) : '—'}</span></div>
+      <div class="info-row"><span class="key">Alert Active</span><span class="val">${job.alert_sent ? 'Yes (price met)' : 'No'}</span></div>
+      <div class="info-row"><span class="key">Total Runs</span><span class="val">${runs.length}</span></div>
+      <div class="info-row"><span class="key">Total Alerts</span><span class="val">${alerts.length}</span></div>
+    `;
+
+    // Sites
+    const sitesList = document.getElementById('sites-list');
+    sitesList.innerHTML = job.sites.map(s => `<div class="site-tag">${esc(s)}</div>`).join('') || '<span style="color:var(--muted);padding:16px">No sites recorded</span>';
+
+    // Price trend chart
+    document.getElementById('trend-count').textContent = trend.length + ' data points';
+    if (priceChart) priceChart.destroy();
+    if (trend.length > 0) {
+      priceChart = new Chart(document.getElementById('price-chart'), {
+        type: 'line',
+        data: {
+          labels: trend.map(t => t.date),
+          datasets: [{
+            label: 'Lowest Price',
+            data: trend.map(t => t.price),
+            borderColor: '#00e5a0',
+            backgroundColor: 'rgba(0,229,160,0.08)',
+            borderWidth: 2,
+            pointRadius: trend.length > 30 ? 0 : 4,
+            pointBackgroundColor: '#00e5a0',
+            tension: 0.3,
+            fill: true,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: '#5a6070', maxTicksLimit: 6, font: { size: 10 } }, grid: { color: '#1e2230' } },
+            y: { ticks: { color: '#5a6070', callback: v => '$' + v.toFixed(0), font: { size: 10 } }, grid: { color: '#1e2230' } }
+          }
+        }
+      });
+    } else {
+      document.querySelector('.chart-wrap').innerHTML = '<div class="empty-state" style="height:100%;display:flex;align-items:center;justify-content:center;">No price data yet</div>';
+    }
+
+    // Alerts
+    document.getElementById('alert-count').textContent = alerts.length + ' alerts';
+    document.getElementById('alerts-tbody').innerHTML = alerts.length ? alerts.map(a => `
+      <tr>
+        <td>${a.sent_at || '—'}</td>
+        <td style="color:var(--muted)">${esc(a.email_to)}</td>
+        <td class="price">$${a.lowest_price_found?.toFixed(2) || '—'}</td>
+        <td>${a.send_status === 'sent' ? '<span class="badge badge-green">Sent</span>' : '<span class="badge badge-red">Failed</span>'}</td>
+      </tr>
+    `).join('') : '<tr><td colspan="4" class="empty-state">No alerts sent yet.</td></tr>';
+
+    // Runs
+    document.getElementById('run-count').textContent = runs.length + ' runs';
+    document.getElementById('runs-tbody').innerHTML = runs.length ? runs.map(r => `
+      <tr>
+        <td style="white-space:nowrap">${r.started_at || '—'}</td>
+        <td><span class="badge ${r.run_type === 'instant' ? 'badge-blue' : 'badge-muted'}">${r.run_type}</span></td>
+        <td>${r.lowest_price ? '<span class="price">$' + r.lowest_price.toFixed(2) + '</span>' : '—'}</td>
+        <td style="color:var(--muted);font-size:11px">${esc(r.lowest_site || '—')}</td>
+        <td>${r.alert_triggered ? '<span class="badge badge-green">Yes</span>' : '—'}</td>
+        <td>${r.error_sites?.length ? '<span style="color:var(--danger)">' + r.error_sites.length + ' failed</span>' : '<span style="color:var(--accent)">0</span>'}</td>
+        <td class="hits-list">${r.top_hits?.slice(0,3).map(h => `<div><span>$${h.price?.toFixed(2)}</span> ${esc(h.title?.substring(0,40) || '')}</div>`).join('') || '—'}</td>
+      </tr>
+    `).join('') : '<tr><td colspan="7" class="empty-state">No runs yet.</td></tr>';
+  }
+
+  load();
+</script>
+</body>
+</html>

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Site Performance — Price Monitor Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0a0c10;--surface:#111318;--border:#1e2230;--accent:#00e5a0;--accent2:#0080ff;--danger:#ff4757;--warn:#ffa502;--text:#e8eaf0;--muted:#5a6070;--mono:'DM Mono',monospace;--display:'Syne',sans-serif;}
+  html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--mono);}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:40px 40px;opacity:.2;pointer-events:none;z-index:0;}
+  .layout{position:relative;z-index:1;display:flex;min-height:100vh;}
+  .sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:32px 0;flex-shrink:0;position:sticky;top:0;height:100vh;}
+  .sidebar-brand{padding:0 24px 32px;border-bottom:1px solid var(--border);margin-bottom:24px;}
+  .sidebar-brand .label{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--accent);font-family:var(--display);font-weight:700;}
+  .sidebar-brand .title{font-family:var(--display);font-size:20px;font-weight:800;margin-top:4px;}
+  .nav-section{padding:0 24px 8px;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-top:16px;}
+  .nav-item{padding:10px 24px;font-size:12px;letter-spacing:.08em;color:var(--muted);border-left:2px solid transparent;text-decoration:none;display:block;transition:all .2s;}
+  .nav-item:hover,.nav-item.active{color:var(--text);background:rgba(0,229,160,.04);border-left-color:var(--accent);}
+  .sidebar-bottom{margin-top:auto;padding:24px;border-top:1px solid var(--border);}
+  .logout-btn{width:100%;padding:10px;background:none;border:1px solid var(--border);border-radius:3px;color:var(--muted);font-family:var(--mono);font-size:12px;cursor:pointer;text-align:center;text-decoration:none;display:block;transition:all .2s;}
+  .logout-btn:hover{color:var(--danger);border-color:var(--danger);}
+  .main{flex:1;padding:40px 48px;overflow-y:auto;}
+  h1{font-family:var(--display);font-size:32px;font-weight:800;margin-bottom:6px;}
+  .subtitle{color:var(--muted);font-size:13px;margin-bottom:32px;}
+  .stats{display:flex;gap:16px;margin-bottom:32px;flex-wrap:wrap;}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:20px 24px;flex:1;min-width:130px;}
+  .stat-card .label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+  .stat-card .value{font-family:var(--display);font-size:28px;font-weight:800;color:var(--accent);}
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:24px;}
+  .panel-header{padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+  .panel-title{font-family:var(--display);font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;}
+  .btn{padding:8px 16px;border-radius:3px;font-family:var(--display);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;border:1px solid var(--border);background:none;color:var(--muted);transition:all .2s;}
+  .btn:hover{color:var(--text);border-color:var(--text);}
+  .table-wrap{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:12px;}
+  thead th{padding:12px 16px;text-align:left;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);font-weight:400;}
+  tbody tr{border-bottom:1px solid var(--border);transition:background .15s;}
+  tbody tr:last-child{border-bottom:none;}
+  tbody tr:hover{background:rgba(255,255,255,.02);}
+  td{padding:12px 16px;vertical-align:middle;}
+  .bar-wrap{width:120px;height:8px;background:var(--border);border-radius:4px;overflow:hidden;display:inline-block;}
+  .bar-fill{height:100%;border-radius:4px;transition:width .3s;}
+  .bar-green{background:var(--accent);}
+  .bar-red{background:var(--danger);}
+  .empty-state{padding:48px;text-align:center;color:var(--muted);}
+  /* Alert stats */
+  .alert-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;}
+  .alert-cell{padding:20px 24px;border-right:1px solid var(--border);}
+  .alert-cell:last-child{border-right:none;}
+  .alert-cell .label{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+  .alert-cell .value{font-family:var(--display);font-size:26px;font-weight:800;}
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="label">Admin Panel</div>
+      <div class="title">Price Monitor</div>
+    </div>
+    <nav>
+      <div class="nav-section">Management</div>
+      <a class="nav-item" href="/admin">&#9632; Users</a>
+      <div class="nav-section">Analytics</div>
+      <a class="nav-item" href="/analytics/products">&#9670; Products</a>
+      <a class="nav-item" href="/analytics/users">&#9670; User Activity</a>
+      <a class="nav-item active" href="/analytics/sites">&#9670; Site Performance</a>
+      <div class="nav-section">App</div>
+      <a class="nav-item" href="/">&#8599; Go to App</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <a class="logout-btn" href="/auth/logout">Sign Out</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <h1>Site Performance</h1>
+    <p class="subtitle">Which scraped sites are returning results and which are failing most often.</p>
+
+    <!-- Alert stats -->
+    <div class="panel" style="margin-bottom:24px;">
+      <div class="panel-header"><span class="panel-title">Alert Summary</span></div>
+      <div class="alert-grid" id="alert-stats">
+        <div class="alert-cell"><div class="label">Total Runs</div><div class="value" style="color:var(--text)">—</div></div>
+        <div class="alert-cell"><div class="label">Alerts Fired</div><div class="value" style="color:var(--accent)">—</div></div>
+        <div class="alert-cell"><div class="label">Successfully Sent</div><div class="value" style="color:var(--accent2)">—</div></div>
+        <div class="alert-cell"><div class="label">Alert Rate</div><div class="value" style="color:var(--warn)">—</div></div>
+      </div>
+    </div>
+
+    <!-- Site table -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Sites Ranked by Error Rate</span>
+        <button class="btn" onclick="load()">&#8635; Refresh</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Domain</th>
+              <th>Times Checked</th>
+              <th>Errors</th>
+              <th>Error Rate</th>
+              <th></th>
+              <th>Times Found Lowest</th>
+              <th>Success Rate</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="sites-tbody"><tr><td colspan="8" class="empty-state">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  async function loadAlertStats() {
+    const res  = await fetch('/analytics/api/alert-stats');
+    const data = await res.json();
+    const cells = document.querySelectorAll('#alert-stats .value');
+    cells[0].textContent = data.total_runs;
+    cells[1].textContent = data.total_alerts;
+    cells[2].textContent = data.sent_alerts;
+    cells[3].textContent = data.alert_rate + '%';
+  }
+
+  async function load() {
+    const res  = await fetch('/analytics/api/sites');
+    const data = await res.json();
+    const tbody = document.getElementById('sites-tbody');
+    if (!data.length) { tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No run data yet.</td></tr>'; return; }
+    tbody.innerHTML = data.map(s => {
+      const errColor = s.error_rate > 30 ? 'var(--danger)' : s.error_rate > 10 ? 'var(--warn)' : 'var(--accent)';
+      return `
+        <tr>
+          <td style="font-weight:500">${s.domain}</td>
+          <td>${s.checked}</td>
+          <td style="color:${s.errors > 0 ? 'var(--danger)' : 'var(--muted)'}">${s.errors}</td>
+          <td style="color:${errColor}">${s.error_rate}%</td>
+          <td><div class="bar-wrap"><div class="bar-fill bar-red" style="width:${Math.min(s.error_rate,100)}%"></div></div></td>
+          <td style="color:var(--accent)">${s.found_lowest}</td>
+          <td style="color:var(--accent)">${s.success_rate}%</td>
+          <td><div class="bar-wrap"><div class="bar-fill bar-green" style="width:${Math.min(s.success_rate,100)}%"></div></div></td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  loadAlertStats();
+  load();
+</script>
+</body>
+</html>

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Products — Price Monitor Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:#0a0c10; --surface:#111318; --surface2:#161920; --border:#1e2230;
+    --accent:#00e5a0; --accent2:#0080ff; --danger:#ff4757; --warn:#ffa502;
+    --text:#e8eaf0; --muted:#5a6070; --mono:'DM Mono',monospace; --display:'Syne',sans-serif;
+  }
+  html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--mono);}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:40px 40px;opacity:.2;pointer-events:none;z-index:0;}
+  .layout{position:relative;z-index:1;display:flex;min-height:100vh;}
+  .sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:32px 0;flex-shrink:0;position:sticky;top:0;height:100vh;}
+  .sidebar-brand{padding:0 24px 32px;border-bottom:1px solid var(--border);margin-bottom:24px;}
+  .sidebar-brand .label{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--accent);font-family:var(--display);font-weight:700;}
+  .sidebar-brand .title{font-family:var(--display);font-size:20px;font-weight:800;margin-top:4px;}
+  .nav-section{padding:0 24px 8px;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-top:16px;}
+  .nav-item{padding:10px 24px;font-size:12px;letter-spacing:.08em;color:var(--muted);cursor:pointer;transition:color .2s,background .2s;border-left:2px solid transparent;text-decoration:none;display:block;}
+  .nav-item:hover,.nav-item.active{color:var(--text);background:rgba(0,229,160,.04);border-left-color:var(--accent);}
+  .sidebar-bottom{margin-top:auto;padding:24px;border-top:1px solid var(--border);}
+  .logout-btn{width:100%;padding:10px;background:none;border:1px solid var(--border);border-radius:3px;color:var(--muted);font-family:var(--mono);font-size:12px;cursor:pointer;transition:all .2s;text-align:center;text-decoration:none;display:block;}
+  .logout-btn:hover{color:var(--danger);border-color:var(--danger);}
+  .main{flex:1;padding:40px 48px;overflow-y:auto;}
+  .page-header{margin-bottom:32px;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:16px;}
+  .page-header h1{font-family:var(--display);font-size:32px;font-weight:800;}
+  .page-header p{color:var(--muted);font-size:13px;margin-top:4px;}
+  .stats{display:flex;gap:16px;margin-bottom:32px;flex-wrap:wrap;}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:20px 24px;flex:1;min-width:130px;}
+  .stat-card .label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+  .stat-card .value{font-family:var(--display);font-size:28px;font-weight:800;color:var(--accent);}
+  .stat-card .value.warn{color:var(--warn);}
+  .stat-card .value.blue{color:var(--accent2);}
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:24px;}
+  .panel-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+  .panel-title{font-family:var(--display);font-size:14px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;}
+  .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  input[type="text"]{background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:8px 12px;font-family:var(--mono);font-size:12px;color:var(--text);outline:none;transition:border-color .2s;}
+  input[type="text"]:focus{border-color:var(--accent);}
+  input::placeholder{color:var(--muted);}
+  .btn{padding:8px 16px;border-radius:3px;font-family:var(--display);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;border:none;transition:opacity .15s;text-decoration:none;display:inline-block;}
+  .btn:hover{opacity:.8;}
+  .btn-primary{background:var(--accent);color:#000;}
+  .btn-ghost{background:none;border:1px solid var(--border);color:var(--muted);}
+  .btn-ghost:hover{color:var(--text);border-color:var(--text);}
+  .table-wrap{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:12px;}
+  thead th{padding:12px 16px;text-align:left;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);font-weight:400;white-space:nowrap;}
+  tbody tr{border-bottom:1px solid var(--border);transition:background .15s;cursor:pointer;}
+  tbody tr:last-child{border-bottom:none;}
+  tbody tr:hover{background:rgba(255,255,255,.03);}
+  td{padding:13px 16px;vertical-align:middle;}
+  .badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;}
+  .badge-green{background:rgba(0,229,160,.12);color:var(--accent);}
+  .badge-blue{background:rgba(0,128,255,.12);color:var(--accent2);}
+  .badge-warn{background:rgba(255,165,2,.12);color:var(--warn);}
+  .badge-muted{background:rgba(90,96,112,.15);color:var(--muted);}
+  .badge-red{background:rgba(255,71,87,.12);color:var(--danger);}
+  .product-name{font-weight:500;color:var(--text);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .price{color:var(--accent);font-weight:500;}
+  .empty-state{padding:48px;text-align:center;color:var(--muted);}
+  .toggle-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);}
+  .toggle-row input[type=checkbox]{accent-color:var(--accent);}
+  #toast{position:fixed;bottom:32px;right:32px;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);padding:14px 20px;border-radius:4px;font-size:13px;transform:translateY(20px);opacity:0;transition:all .3s;pointer-events:none;z-index:999;}
+  #toast.show{transform:translateY(0);opacity:1;}
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="label">Admin Panel</div>
+      <div class="title">Price Monitor</div>
+    </div>
+    <nav>
+      <div class="nav-section">Management</div>
+      <a class="nav-item" href="/admin">&#9632; Users</a>
+      <div class="nav-section">Analytics</div>
+      <a class="nav-item active" href="/analytics/products">&#9670; Products</a>
+      <a class="nav-item" href="/analytics/users">&#9670; User Activity</a>
+      <a class="nav-item" href="/analytics/sites">&#9670; Site Performance</a>
+      <div class="nav-section">App</div>
+      <a class="nav-item" href="/">&#8599; Go to App</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <a class="logout-btn" href="/auth/logout">Sign Out</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="page-header">
+      <div>
+        <h1>Products</h1>
+        <p>All watchlist jobs in the system — price watches and availability scouts.</p>
+      </div>
+      <div class="controls">
+        <label class="toggle-row">
+          <input type="checkbox" id="show-deleted" onchange="load()"> Show deleted
+        </label>
+        <input type="text" id="search" placeholder="Search product..." oninput="filterTable()" style="width:200px;">
+        <button class="btn btn-ghost" onclick="load()">&#8635; Refresh</button>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat-card"><div class="label">Total Active</div><div class="value" id="s-total">—</div></div>
+      <div class="stat-card"><div class="label">Price Watches</div><div class="value blue" id="s-watch">—</div></div>
+      <div class="stat-card"><div class="label">Scout Jobs</div><div class="value warn" id="s-scout">—</div></div>
+      <div class="stat-card"><div class="label">Alerts Sent</div><div class="value" id="s-alerts">—</div></div>
+      <div class="stat-card"><div class="label">Total Runs</div><div class="value" id="s-runs">—</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">All Products</span>
+        <span id="row-count" style="font-size:12px;color:var(--muted);"></span>
+      </div>
+      <div class="table-wrap">
+        <table id="products-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Product</th>
+              <th>Type</th>
+              <th>Target Price</th>
+              <th>Notify Email</th>
+              <th>Added By</th>
+              <th>Schedule</th>
+              <th>Runs</th>
+              <th>Alerts</th>
+              <th>Last Run</th>
+              <th>Lowest Found</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"><tr><td colspan="12" class="empty-state">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+<div id="toast"></div>
+
+<script>
+  let allRows = [];
+
+  async function load() {
+    const showDeleted = document.getElementById('show-deleted').checked;
+    const res  = await fetch(`/analytics/api/products?show_deleted=${showDeleted}`);
+    const data = await res.json();
+    allRows = data;
+
+    // Stats
+    const active  = data.filter(d => d.is_active);
+    document.getElementById('s-total').textContent  = active.length;
+    document.getElementById('s-watch').textContent  = active.filter(d => d.job_type === 'price_watch').length;
+    document.getElementById('s-scout').textContent  = active.filter(d => d.job_type === 'availability_scout').length;
+    document.getElementById('s-alerts').textContent = data.reduce((a,d) => a + d.alert_count, 0);
+    document.getElementById('s-runs').textContent   = data.reduce((a,d) => a + d.run_count, 0);
+
+    renderTable(data);
+  }
+
+  function filterTable() {
+    const q = document.getElementById('search').value.toLowerCase();
+    renderTable(allRows.filter(d =>
+      d.product_name.toLowerCase().includes(q) ||
+      (d.user_email || '').toLowerCase().includes(q) ||
+      (d.created_by || '').toLowerCase().includes(q)
+    ));
+  }
+
+  function renderTable(data) {
+    document.getElementById('row-count').textContent = `${data.length} products`;
+    const tbody = document.getElementById('tbody');
+    if (!data.length) {
+      tbody.innerHTML = '<tr><td colspan="12" class="empty-state">No products found.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.map(d => `
+      <tr onclick="window.location='/analytics/products/${d.id}'">
+        <td style="color:var(--muted)">${d.id}</td>
+        <td><div class="product-name" title="${esc(d.product_name)}">${esc(d.product_name)}</div></td>
+        <td>${d.job_type === 'price_watch'
+          ? '<span class="badge badge-blue">Price Watch</span>'
+          : '<span class="badge badge-warn">Scout</span>'}</td>
+        <td>${d.target_price ? '<span class="price">$' + d.target_price.toFixed(2) + '</span>' : '—'}</td>
+        <td style="color:var(--muted);font-size:11px">${esc(d.user_email)}</td>
+        <td style="color:var(--muted);font-size:11px">${esc(d.created_by)}</td>
+        <td><span class="badge badge-muted">${d.schedule}</span></td>
+        <td style="color:var(--text)">${d.run_count}</td>
+        <td>${d.alert_count > 0 ? '<span style="color:var(--accent)">' + d.alert_count + '</span>' : '0'}</td>
+        <td style="color:var(--muted);font-size:11px">${d.last_run_at || '—'}</td>
+        <td>${d.last_lowest_price ? '<span class="price">$' + d.last_lowest_price.toFixed(2) + '</span>' : '—'}</td>
+        <td>${d.is_active
+          ? '<span class="badge badge-green">Active</span>'
+          : '<span class="badge badge-red">Deleted</span>'}</td>
+      </tr>
+    `).join('');
+  }
+
+  function esc(s) {
+    const d = document.createElement('div');
+    d.textContent = String(s || '');
+    return d.innerHTML;
+  }
+
+  load();
+</script>
+</body>
+</html>

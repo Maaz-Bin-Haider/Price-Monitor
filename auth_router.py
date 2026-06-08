@@ -20,6 +20,7 @@ from auth import (
     list_users, list_locked_ips, toggle_user_active, unlock_ip,
 )
 from auth_middleware import get_current_user, require_admin
+from analytics import log_activity
 
 auth_router = APIRouter(tags=["auth"])
 templates   = Jinja2Templates(
@@ -76,12 +77,24 @@ async def login_submit(
         db.close()
 
     if error:
+        log_activity(
+            username   = username.strip() if username else "unknown",
+            event_type = "login_failed",
+            detail     = error,
+            ip_address = ip,
+        )
         return templates.TemplateResponse(
             "login.html",
             {"request": request, "error": error},
             status_code=401,
         )
 
+    log_activity(
+        username   = _username,
+        event_type = "login",
+        detail     = "Successful login",
+        ip_address = ip,
+    )
     token    = create_access_token(_username, _is_admin)
     redirect = "/admin" if _is_admin else "/"
     response = RedirectResponse(url=redirect, status_code=302)
@@ -97,7 +110,16 @@ async def login_submit(
 
 
 @auth_router.get("/auth/logout")
-async def logout():
+async def logout(request: Request):
+    try:
+        from auth import COOKIE_NAME as _cn, decode_token as _dt
+        _token = request.cookies.get(_cn)
+        if _token:
+            _p = _dt(_token)
+            if _p:
+                log_activity(username=_p.get("sub","unknown"), event_type="logout", detail="Signed out")
+    except Exception:
+        pass
     response = RedirectResponse(url="/login", status_code=302)
     response.delete_cookie(COOKIE_NAME)
     return response
@@ -171,6 +193,12 @@ async def admin_create_user(
             is_admin   = is_admin,
             created_by = admin["username"],
         )
+        log_activity(
+            username    = admin["username"],
+            event_type  = "user_created",
+            detail      = f"Created user '{username}'" + (" (admin)" if is_admin else ""),
+            target_user = username,
+        )
         return JSONResponse(
             {"id": user.id, "username": user.username, "is_admin": user.is_admin},
             status_code=201,
@@ -195,6 +223,16 @@ async def admin_toggle_user(user_id: int, request: Request):
         db.close()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    try:
+        _actor = require_admin(request)
+        log_activity(
+            username    = _actor["username"],
+            event_type  = "user_toggled",
+            detail      = f"Set user '{user.is_active}' active={user.is_active}",
+            target_user = str(user_id),
+        )
+    except Exception:
+        pass
     return JSONResponse({"id": user.id, "is_active": user.is_active})
 
 
@@ -215,6 +253,12 @@ async def admin_delete_user(user_id: int, request: Request):
         db.close()
     if not ok:
         raise HTTPException(status_code=404, detail="User not found")
+    log_activity(
+        username    = admin["username"],
+        event_type  = "user_deleted",
+        detail      = f"Deleted user #{user_id}",
+        target_user = str(user_id),
+    )
     return JSONResponse({"deleted": True})
 
 
@@ -252,4 +296,13 @@ async def admin_unlock_ip(request: Request, ip: str = Form(...)):
         unlock_ip(db, ip)
     finally:
         db.close()
+    try:
+        _actor = require_admin(request)
+        log_activity(
+            username   = _actor["username"],
+            event_type = "ip_unlocked",
+            detail     = f"Unlocked IP: {ip}",
+        )
+    except Exception:
+        pass
     return JSONResponse({"unlocked": ip})

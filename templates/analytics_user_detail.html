@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>User Detail — Price Monitor Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0a0c10;--surface:#111318;--border:#1e2230;--accent:#00e5a0;--accent2:#0080ff;--danger:#ff4757;--warn:#ffa502;--text:#e8eaf0;--muted:#5a6070;--mono:'DM Mono',monospace;--display:'Syne',sans-serif;}
+  html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--mono);}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:40px 40px;opacity:.2;pointer-events:none;z-index:0;}
+  .layout{position:relative;z-index:1;display:flex;min-height:100vh;}
+  .sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:32px 0;flex-shrink:0;position:sticky;top:0;height:100vh;}
+  .sidebar-brand{padding:0 24px 32px;border-bottom:1px solid var(--border);margin-bottom:24px;}
+  .sidebar-brand .label{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--accent);font-family:var(--display);font-weight:700;}
+  .sidebar-brand .title{font-family:var(--display);font-size:20px;font-weight:800;margin-top:4px;}
+  .nav-section{padding:0 24px 8px;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-top:16px;}
+  .nav-item{padding:10px 24px;font-size:12px;letter-spacing:.08em;color:var(--muted);border-left:2px solid transparent;text-decoration:none;display:block;transition:all .2s;}
+  .nav-item:hover,.nav-item.active{color:var(--text);background:rgba(0,229,160,.04);border-left-color:var(--accent);}
+  .sidebar-bottom{margin-top:auto;padding:24px;border-top:1px solid var(--border);}
+  .logout-btn{width:100%;padding:10px;background:none;border:1px solid var(--border);border-radius:3px;color:var(--muted);font-family:var(--mono);font-size:12px;cursor:pointer;text-align:center;text-decoration:none;display:block;transition:all .2s;}
+  .logout-btn:hover{color:var(--danger);border-color:var(--danger);}
+  .main{flex:1;padding:40px 48px;overflow-y:auto;}
+  .back-link{display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:12px;text-decoration:none;margin-bottom:24px;transition:color .2s;}
+  .back-link:hover{color:var(--accent);}
+  h1{font-family:var(--display);font-size:28px;font-weight:800;margin-bottom:4px;}
+  .stats{display:flex;gap:16px;margin:24px 0 32px;flex-wrap:wrap;}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:18px 22px;flex:1;min-width:120px;}
+  .stat-card .label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+  .stat-card .value{font-family:var(--display);font-size:24px;font-weight:800;color:var(--accent);}
+  .stat-card .value.blue{color:var(--accent2);}
+  .stat-card .value.warn{color:var(--warn);}
+  .stat-card .value.danger{color:var(--danger);}
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:24px;}
+  .panel-header{padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+  .panel-title{font-family:var(--display);font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;}
+  .filter-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .filter-btn{padding:5px 12px;border-radius:20px;font-size:10px;font-family:var(--mono);border:1px solid var(--border);background:none;color:var(--muted);cursor:pointer;transition:all .2s;letter-spacing:.06em;}
+  .filter-btn.active{background:rgba(0,229,160,.12);border-color:var(--accent);color:var(--accent);}
+  /* Timeline */
+  .timeline{padding:24px;}
+  .tl-item{display:flex;gap:16px;padding-bottom:24px;position:relative;}
+  .tl-item:not(:last-child)::after{content:'';position:absolute;left:11px;top:24px;bottom:0;width:1px;background:var(--border);}
+  .tl-dot{width:24px;height:24px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;border:2px solid;}
+  .tl-dot.login{background:rgba(0,229,160,.1);border-color:var(--accent);color:var(--accent);}
+  .tl-dot.logout{background:rgba(90,96,112,.1);border-color:var(--muted);color:var(--muted);}
+  .tl-dot.job{background:rgba(0,128,255,.1);border-color:var(--accent2);color:var(--accent2);}
+  .tl-dot.admin{background:rgba(255,165,2,.1);border-color:var(--warn);color:var(--warn);}
+  .tl-dot.delete{background:rgba(255,71,87,.1);border-color:var(--danger);color:var(--danger);}
+  .tl-dot.other{background:rgba(90,96,112,.1);border-color:var(--muted);color:var(--muted);}
+  .tl-content{flex:1;padding-top:2px;}
+  .tl-time{font-size:10px;color:var(--muted);margin-bottom:3px;}
+  .tl-event{font-size:12px;font-weight:500;color:var(--text);margin-bottom:2px;}
+  .tl-detail{font-size:11px;color:var(--muted);}
+  .tl-ip{font-size:10px;color:var(--muted);margin-top:2px;font-family:var(--mono);}
+  .job-link{color:var(--accent2);text-decoration:none;font-size:10px;}
+  .job-link:hover{text-decoration:underline;}
+  .empty-state{padding:48px;text-align:center;color:var(--muted);}
+  .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:9px;letter-spacing:.06em;text-transform:uppercase;margin-left:6px;}
+  .badge-green{background:rgba(0,229,160,.12);color:var(--accent);}
+  .badge-blue{background:rgba(0,128,255,.12);color:var(--accent2);}
+  .badge-warn{background:rgba(255,165,2,.12);color:var(--warn);}
+  .badge-red{background:rgba(255,71,87,.12);color:var(--danger);}
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="label">Admin Panel</div>
+      <div class="title">Price Monitor</div>
+    </div>
+    <nav>
+      <div class="nav-section">Management</div>
+      <a class="nav-item" href="/admin">&#9632; Users</a>
+      <div class="nav-section">Analytics</div>
+      <a class="nav-item" href="/analytics/products">&#9670; Products</a>
+      <a class="nav-item active" href="/analytics/users">&#9670; User Activity</a>
+      <a class="nav-item" href="/analytics/sites">&#9670; Site Performance</a>
+      <div class="nav-section">App</div>
+      <a class="nav-item" href="/">&#8599; Go to App</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <a class="logout-btn" href="/auth/logout">Sign Out</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <a class="back-link" href="/analytics/users">&#8592; Back to Users</a>
+    <h1 id="username-title">Loading…</h1>
+    <p id="username-sub" style="color:var(--muted);font-size:13px;margin-top:4px;"></p>
+
+    <div class="stats">
+      <div class="stat-card"><div class="label">Total Events</div><div class="value" id="s-total">—</div></div>
+      <div class="stat-card"><div class="label">Logins</div><div class="value" id="s-logins">—</div></div>
+      <div class="stat-card"><div class="label">Failed Logins</div><div class="value danger" id="s-failed">—</div></div>
+      <div class="stat-card"><div class="label">Jobs Created</div><div class="value blue" id="s-jobs">—</div></div>
+      <div class="stat-card"><div class="label">Jobs Deleted</div><div class="value warn" id="s-deleted">—</div></div>
+      <div class="stat-card"><div class="label">Manual Runs</div><div class="value" id="s-runs">—</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Activity Timeline</span>
+        <div class="filter-row" id="filters">
+          <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
+          <button class="filter-btn" onclick="setFilter('login', this)">Logins</button>
+          <button class="filter-btn" onclick="setFilter('job', this)">Jobs</button>
+          <button class="filter-btn" onclick="setFilter('admin', this)">Admin</button>
+        </div>
+      </div>
+      <div class="timeline" id="timeline"><p style="color:var(--muted)">Loading…</p></div>
+    </div>
+  </main>
+</div>
+
+<script>
+  const username = decodeURIComponent(location.pathname.split('/').pop());
+  let allLogs = [];
+  let currentFilter = 'all';
+
+  function esc(s) { const d = document.createElement('div'); d.textContent = String(s||''); return d.innerHTML; }
+
+  function dotClass(e) {
+    if (e === 'login') return 'login';
+    if (e === 'logout') return 'logout';
+    if (['job_created','job_edited','job_run_now'].includes(e)) return 'job';
+    if (['user_created','user_deleted','user_toggled','ip_unlocked'].includes(e)) return 'admin';
+    if (e === 'job_deleted' || e === 'login_failed') return 'delete';
+    return 'other';
+  }
+
+  function dotIcon(e) {
+    const icons = {
+      login:'→', logout:'←', login_failed:'✗',
+      job_created:'+', job_edited:'✎', job_deleted:'✕', job_run_now:'▶',
+      user_created:'👤', user_deleted:'✕', user_toggled:'⟳', ip_unlocked:'🔓',
+    };
+    return icons[e] || '·';
+  }
+
+  function eventLabel(e) {
+    return e.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  function badgeForEvent(e) {
+    const map = {
+      login:'badge-green', logout:'badge-muted', login_failed:'badge-red',
+      job_created:'badge-blue', job_edited:'badge-blue', job_deleted:'badge-red', job_run_now:'badge-blue',
+      user_created:'badge-warn', user_deleted:'badge-red', user_toggled:'badge-warn', ip_unlocked:'badge-warn',
+    };
+    return `<span class="badge ${map[e]||'badge-muted'}">${eventLabel(e)}</span>`;
+  }
+
+  function setFilter(f, btn) {
+    currentFilter = f;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderTimeline();
+  }
+
+  function renderTimeline() {
+    let logs = allLogs;
+    if (currentFilter === 'login') logs = logs.filter(l => ['login','logout','login_failed'].includes(l.event_type));
+    if (currentFilter === 'job')   logs = logs.filter(l => l.event_type.startsWith('job_'));
+    if (currentFilter === 'admin') logs = logs.filter(l => ['user_created','user_deleted','user_toggled','ip_unlocked'].includes(l.event_type));
+
+    const tl = document.getElementById('timeline');
+    if (!logs.length) { tl.innerHTML = '<p class="empty-state">No events for this filter.</p>'; return; }
+    tl.innerHTML = logs.map(l => `
+      <div class="tl-item">
+        <div class="tl-dot ${dotClass(l.event_type)}">${dotIcon(l.event_type)}</div>
+        <div class="tl-content">
+          <div class="tl-time">${l.timestamp}</div>
+          <div class="tl-event">
+            ${badgeForEvent(l.event_type)}
+            ${l.target_user ? '<span style="color:var(--muted);font-size:11px"> → ' + esc(l.target_user) + '</span>' : ''}
+          </div>
+          ${l.detail ? '<div class="tl-detail">' + esc(l.detail) + '</div>' : ''}
+          ${l.job_id ? '<div class="tl-detail"><a class="job-link" href="/job/' + l.job_id + '" target="_blank">View Job #' + l.job_id + ' ↗</a></div>' : ''}
+          ${l.ip_address ? '<div class="tl-ip">IP: ' + esc(l.ip_address) + '</div>' : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  async function load() {
+    document.getElementById('username-title').textContent = username;
+    document.getElementById('username-sub').textContent = 'Full activity history for this user.';
+
+    const res  = await fetch(`/analytics/api/users/${encodeURIComponent(username)}`);
+    if (!res.ok) { document.getElementById('timeline').innerHTML = '<p class="empty-state">User not found or no activity.</p>'; return; }
+    allLogs = await res.json();
+
+    // Stats
+    document.getElementById('s-total').textContent   = allLogs.length;
+    document.getElementById('s-logins').textContent  = allLogs.filter(l => l.event_type === 'login').length;
+    document.getElementById('s-failed').textContent  = allLogs.filter(l => l.event_type === 'login_failed').length;
+    document.getElementById('s-jobs').textContent    = allLogs.filter(l => l.event_type === 'job_created').length;
+    document.getElementById('s-deleted').textContent = allLogs.filter(l => l.event_type === 'job_deleted').length;
+    document.getElementById('s-runs').textContent    = allLogs.filter(l => l.event_type === 'job_run_now').length;
+
+    renderTimeline();
+  }
+
+  load();
+</script>
+</body>
+</html>
