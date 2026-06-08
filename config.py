@@ -55,9 +55,13 @@ SITES = [
     {
         "name": "Big W",
         "domain": "bigw.com.au",
-        "tier": "medium",
+        # BigW is a React SPA — products load via API after hydration.
+        # heavy tier (super=true) + waitFor the product grid selector
+        # gives the app time to fetch and render product cards.
+        "tier": "heavy",
         "geo": "au",
-        "search_url": "https://www.bigw.com.au/search?q={query}",
+        "search_url": "https://www.bigw.com.au/search?text={query}",
+        "waitFor": "[data-testid='product-tile'], [class*='ProductTile'], .product-listing",
     },
     {
         "name": "Officeworks",
@@ -113,7 +117,8 @@ SITES = [
         "domain": "pbtech.co.nz",
         "tier": "medium",
         "geo": "nz",
-        "search_url": "https://www.pbtech.co.nz/search?q={query}",
+        # PBTech uses sf= as the search param (not q=). Using q= returns empty results.
+        "search_url": "https://www.pbtech.co.nz/search?sf={query}",
     },
     {
         "name": "Bunnings NZ",
@@ -176,11 +181,8 @@ SITES = [
     {
         "name": "Jacobs Digital",
         "domain": "jacobsdigital.co.nz",
-        "tier": "medium",
+        "tier": "medium",  # medium required — Boost PFS products load via JS/XHR
         "geo": "nz",
-        # Jacobs Digital uses Boost Commerce (bc-sf-filter) — products are loaded
-        # entirely via JS/XHR after page load. Requires JS rendering (medium tier)
-        # so Boost PFS executes and injects product cards into the DOM.
         "search_url": "https://www.jacobsdigital.co.nz/search?type=product&q={query}",
     },
 ]

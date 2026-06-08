@@ -9,7 +9,7 @@ SCRAPE_DO_BASE = "https://api.scrape.do"
 _semaphore = asyncio.Semaphore(5)
 
 
-async def fetch_page(url: str, tier: str, geo: str) -> str | None:
+async def fetch_page(url: str, tier: str, geo: str, wait_for: str = None) -> str | None:
     """Fetch a page via Scrape.do API. Returns HTML string or None on failure."""
     params = {
         "token": settings.SCRAPE_DO_TOKEN,
@@ -23,6 +23,8 @@ async def fetch_page(url: str, tier: str, geo: str) -> str | None:
     # Give JS-heavy sites extra time to load dynamic content
     if tier in ("heavy", "medium"):
         params["waitUntil"] = "networkidle0"
+    if wait_for:
+        params["waitFor"] = wait_for
 
     async with _semaphore:
         try:
@@ -45,7 +47,7 @@ async def fetch_all(tasks: list[dict]) -> list[dict]:
     Returns same list with 'html' key added (str or None).
     """
     async def _fetch_one(task: dict) -> dict:
-        html = await fetch_page(task["url"], task["tier"], task["geo"])
+        html = await fetch_page(task["url"], task["tier"], task["geo"], task.get("wait_for"))
         return {**task, "html": html}
 
     results = await asyncio.gather(*[_fetch_one(t) for t in tasks])

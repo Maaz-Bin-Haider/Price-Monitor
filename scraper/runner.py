@@ -42,11 +42,12 @@ async def run_search(
         if site.get("cache_bust"):
             url += f"&_ts={int(time.time())}"
         tasks.append({
-            "url": url,
-            "tier": site["tier"],
-            "geo": site["geo"],
-            "site": site["name"],
-            "domain": site["domain"],
+            "url":       url,
+            "tier":      site["tier"],
+            "geo":       site["geo"],
+            "site":      site["name"],
+            "domain":    site["domain"],
+            "wait_for":  site.get("waitFor"),   # optional CSS selector to wait for
         })
 
     # Step 3 — Fetch all concurrently via Scrape.do
@@ -137,11 +138,12 @@ async def run_availability_search(
         if site.get("cache_bust"):
             url += f"&_ts={int(time.time())}"
         tasks.append({
-            "url": url,
-            "tier": site["tier"],
-            "geo": site["geo"],
-            "site": site["name"],
-            "domain": site["domain"],
+            "url":       url,
+            "tier":      site["tier"],
+            "geo":       site["geo"],
+            "site":      site["name"],
+            "domain":    site["domain"],
+            "wait_for":  site.get("waitFor"),   # optional CSS selector to wait for
         })
 
     fetched = await fetch_all(tasks)

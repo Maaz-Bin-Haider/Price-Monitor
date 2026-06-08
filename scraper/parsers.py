@@ -174,27 +174,72 @@ def _bunnings(html, base, **_):
     return results
 
 
-# ── Big W (Next.js shell — products via client API, parse what we can) ────
+# ── Big W (heavy tier — React SPA, products loaded via API after hydration) ──
 def _bigw(html, base, **_):
-    """Big W renders products entirely client-side from their API.
-    The 100KB HTML is just a shell. We attempt CSS extraction as fallback."""
+    """
+    Big W is a React/Next.js SPA. Products load via BigW's storefront API
+    after the page hydrates — requires heavy tier (super=true) with waitFor
+    a product tile selector so the app has time to fetch and render results.
+
+    Rendered product tile structure (confirmed from heavy-tier HTML):
+        <div data-testid="product-tile">
+          <a href="/product/...">
+            <span data-testid="product-title">Apple AirPods Pro</span>
+            <span data-testid="price-value">$379</span>
+          </a>
+        </div>
+
+    Falls back to broader selectors if testid attributes change.
+    """
     results = []
     try:
         soup = BeautifulSoup(html, "lxml")
-        # Try any product tiles rendered
-        for card in soup.select("div[data-testid*='product'], article[class*='product'], "
-                                "div[class*='ProductTile'], li[class*='product-item']")[:10]:
-            name_el = card.select_one("h3, h2, [class*='title'], [class*='name']")
-            price_el = card.select_one("[class*='price'], [class*='Price']")
-            link_el  = card.select_one("a")
-            title = name_el.get_text(strip=True) if name_el else ""
+
+        # Primary: data-testid="product-tile" (BigW's stable React test IDs)
+        cards = soup.select("[data-testid='product-tile']")
+
+        # Fallback 1: class-based selectors
+        if not cards:
+            cards = soup.select(
+                "div[class*='ProductTile'], div[class*='product-tile'], "
+                "article[class*='product'], li[class*='ProductTile']"
+            )
+
+        for card in cards[:24]:
+            # Title
+            title_el = (
+                card.select_one("[data-testid='product-title']") or
+                card.select_one("[data-testid*='title']") or
+                card.select_one("[class*='ProductTitle'], [class*='product-title']") or
+                card.select_one("h3, h2, h4")
+            )
+            title = title_el.get_text(strip=True) if title_el else ""
+
+            # Link
+            link_el = card.select_one("a[href]")
+            href = link_el.get("href", "") if link_el else ""
+            link = abs_url(href, base)
+
+            # Price
+            price_el = (
+                card.select_one("[data-testid='price-value']") or
+                card.select_one("[data-testid*='price']") or
+                card.select_one("[class*='Price'], [class*='price']")
+            )
             price = clean_price(price_el.get_text() if price_el else "")
-            href  = abs_url(link_el.get("href","") if link_el else "", base)
-            if title and price and href:
-                results.append({"title": title, "price": price, "link": href})
-    except Exception:
-        pass
+
+            # Fallback: first $X in card
+            if not price:
+                m = re.search(r"\$([\d,]+(?:\.\d+)?)", card.get_text())
+                price = float(m.group(1).replace(",", "")) if m else None
+
+            if title and price and link:
+                results.append({"title": title, "price": price, "link": link})
+
+    except Exception as e:
+        print(f"[PARSER] bigw: {e}")
     return results
+
 
 
 # ── Officeworks (Next.js with products in __NEXT_DATA__) ──────────────────
@@ -362,8 +407,61 @@ def _noelleeming(html, base, **_):
 
 # ── PB Tech (JS-rendered — returns empty gracefully) ─────────────────────
 def _pbtech(html, base, **_):
-    """PB Tech search results need JS that Scrape.do doesn't fully execute."""
-    return []
+    """
+    PB Tech NZ — server-rendered PHP/Bootstrap site.
+    Search URL must use sf= param (not q=): /search?sf={query}
+
+    Product tile structure:
+        <div class="col-6 col-sm-4 col-md-3 product-tile">
+          <a href="/product/HDDSAM990200/Samsung-990-Pro-...">
+            <div class="product-tile-inner border rounded p-2">
+              <div class="product-title">Samsung 990 Pro 2TB ...</div>
+              <div class="price-row">
+                <div class="price">$279.00</div>
+              </div>
+            </div>
+          </a>
+        </div>
+    """
+    results = []
+    try:
+        soup = BeautifulSoup(html, "lxml")
+
+        # Each product tile div
+        cards = soup.select("div.product-tile, [class*='product-tile']")
+
+        for card in cards[:24]:
+            # Link to product page
+            link_el = card.select_one("a[href*='/product/']") or card.select_one("a[href]")
+            href  = link_el.get("href", "") if link_el else ""
+            link  = abs_url(href, base)
+
+            # Title
+            title_el = (
+                card.select_one(".product-title") or
+                card.select_one("[class*='product-title']") or
+                card.select_one("h3, h4, h2")
+            )
+            title = title_el.get_text(strip=True) if title_el else ""
+
+            # Price: prefer .price-row .price, fallback to any .price
+            price_el = (
+                card.select_one(".price-row .price") or
+                card.select_one(".price") or
+                card.select_one("[class*='price']")
+            )
+            price = clean_price(price_el.get_text() if price_el else "")
+
+            if not price:
+                m = re.search(r"\$([\d,]+(?:\.\d+)?)", card.get_text())
+                price = float(m.group(1).replace(",", "")) if m else None
+
+            if title and price and link:
+                results.append({"title": title, "price": price, "link": link})
+
+    except Exception as e:
+        print(f"[PARSER] pbtech: {e}")
+    return results
 
 
 # ── Skip (Auckland Airport — content site not retail) ────────────────────
