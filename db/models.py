@@ -28,6 +28,7 @@ class WatchlistJob(Base):
     next_run_at = Column(DateTime, nullable=True)
     last_lowest_price = Column(Float, nullable=True)
     is_active = Column(Boolean, default=True)
+    created_by_username = Column(String(64), nullable=True, default="unknown")  # auth username who created this job
 
     runs = relationship("RunResult", back_populates="job", cascade="all, delete-orphan")
     alerts = relationship("AlertLog", back_populates="job", cascade="all, delete-orphan")
