@@ -48,10 +48,10 @@ SITE_PRODUCTS = {
     "bigw.com.au":            "Apple AirPods Pro 3",
     "officeworks.com.au":     "Apple AirPods Pro 3",
     "thegoodguys.com.au":     "Sony WH-1000XM5 Headphones",
-    "bunnings.com.au":        "Dewalt Drill",
+    "bunnings.com.au":        "Starlink Standard 4 X",
     "costco.com.au":          "Apple AirPods Pro",
-    "anacondastores.com":     "DJI Mini 4 Pro Drone Fly More Combo",
-    "bcf.com.au":             "Garmin GPS",
+    "anacondastores.com":     "Minelab Equinox 900 Metal Detector",
+    "bcf.com.au":             "Minelab Gold Monster 1000 Metal Detector",
     "digidirect.com.au":      "Sony A7 Camera",
     "camerapro.com.au":       "Canon EOS Camera",
     "rubbermonkey.com.au":    "DJI Mini 5 Pro",
@@ -60,13 +60,13 @@ SITE_PRODUCTS = {
     "harveynorman.co.nz":     "Sony WH-1000XM5 Headphones",
     "noelleeming.co.nz":      "Sony WH-1000XM5 Headphones",
     "pbtech.co.nz":           "Samsung SSD",
-    "bunnings.co.nz":         "Dewalt Drill",
-    "themall.aucklandairport.co.nz": "Perfume",
+    "bunnings.co.nz":         "Starlink Standard 4 X",
+    "themall.aucklandairport.co.nz": "DJI Neo Drone Fly More Combo",
     "rubbermonkey.co.nz":     "DJI Mini 5 Pro",
     "photogear.co.nz":        "DJI Mini 5 Pro Fly More Combo",
     "photowarehouse.co.nz":   "Sony Camera",
     "jacobsdigital.co.nz":    "Minelab Vanquish 360 Metal Detector",
-}
+} 
 
 MATCH_THRESHOLD = 50   # lower than normal since test products are broad
 

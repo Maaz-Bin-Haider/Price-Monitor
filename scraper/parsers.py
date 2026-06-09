@@ -337,21 +337,36 @@ def _costco(html, base, **_):
     return results
 
 
-# ── Anaconda (card-link pattern) ──────────────────────────────────────────
+# ── Anaconda (card-link inside #productListWrapper) ──────────────────────
 def _anaconda(html, base, **_):
+    """
+    Anaconda has 74+ card-link elements per page — most are CMS banners and
+    carousels that repeat the same promo product (causes all 12 results to be
+    identical). Real search results live only inside #productListWrapper.
+    Scoping to that container returns the correct 18 unique search results.
+    Title has a trailing review count "(28)" that needs to be stripped.
+    """
     results = []
     try:
         soup = BeautifulSoup(html, "lxml")
-        for card in soup.find_all("a", class_="card-link")[:12]:
-            href = abs_url(card.get("href",""), base)
+        # Scope to search results only — avoids CMS banner duplicates
+        wrapper = soup.find(id="productListWrapper") or soup
+        seen_hrefs = set()
+        for card in wrapper.find_all("a", class_="card-link")[:24]:
+            href = abs_url(card.get("href", ""), base)
+            if not href or href in seen_hrefs:
+                continue
+            seen_hrefs.add(href)
+            # Title: strip trailing review count e.g. "Product Name(28)"
             title_el = card.find(class_=re.compile("card-title|card-headline"))
-            title = title_el.get_text(strip=True) if title_el else ""
-            if not title:
+            if title_el:
+                title = re.sub(r'\s*\(\d+\)\s*$', '', title_el.get_text(strip=True))
+            else:
                 text = card.get_text(" ", strip=True)
-                m = re.match(r'^(.+?)\s*(?:FULL PRICE|SALE|WAS|\$)', text)
-                title = m.group(1).strip() if m else text[:60]
+                m = re.match(r'^(.+?)\s*(?:FULL PRICE|SALE|WAS|\$|CLUB)', text)
+                title = m.group(1).strip() if m else text[:80]
             m = re.search(r'\$\s*([\d,]+(?:\.\d+)?)', card.get_text(" "))
-            price = float(m.group(1).replace(",","")) if m else None
+            price = float(m.group(1).replace(",", "")) if m else None
             if title and price and href:
                 results.append({"title": title, "price": price, "link": href})
     except Exception as e:
