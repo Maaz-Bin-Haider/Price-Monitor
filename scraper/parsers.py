@@ -137,40 +137,49 @@ def _harveynorman(html, base, **_):
     return results
 
 
-# ── Bunnings (Next.js — name+route in __NEXT_DATA__, price from CSS) ──────
+# ── Bunnings AU/NZ (Next.js — data-search-product-tile cards) ───────────
 def _bunnings(html, base, **_):
+    """
+    Bunnings renders product cards via Next.js SSR.
+    Card container: div[data-search-product-tile="true"]
+    Title: from aria-label on wrapping <a> (before ", X.X stars" or ", Price")
+    Price: split text nodes '$' + '99' + '.98'
+    Link:  href on wrapping <a>
+    Confirmed from live medium-tier HTML (36 cards per page).
+    """
     results = []
-    nd = re.search(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', html, re.DOTALL)
-    if not nd:
-        return results
-    raw = nd.group(1)
-
-    name_url = re.findall(
-        r'"name"\s*:\s*"([^"]{5,150})"[^}]{0,600}?"productroutingurl"\s*:\s*"([^"]+)"', raw)
-
-    # Get prices from the rendered CSS (p.ebtUXu or sc-bbcf7fe4 class)
     try:
         soup = BeautifulSoup(html, "lxml")
-        containers = soup.find_all(attrs={"data-testid": "productTileContainer"})
-        prices_css = []
-        for ct in containers:
-            m = re.search(r'\$\s*([\d,]+(?:\.\d+)?)', ct.get_text())
-            prices_css.append(clean_price(m.group(1).replace(",","")) if m else None)
-    except Exception:
-        prices_css = []
-
-    for i, (name, route) in enumerate(name_url[:12]):
-        price = prices_css[i] if i < len(prices_css) else None
-        if not price:
-            # Try JSON context around this product
-            idx = raw.find(f'"name":"{name}"')
-            if idx > 0:
-                chunk = raw[max(0, idx-100):idx+300]
-                m = re.search(r'"price"\s*:\s*"?(\d+\.?\d*)"?', chunk)
-                if m:
-                    price = float(m.group(1))
-        if name and route and price:
-            results.append({"title": name, "price": price, "link": abs_url(route, base)})
+        cards = soup.select("[data-search-product-tile='true']")
+        for card in cards[:24]:
+            link_el = card.find("a", href=True)
+            if not link_el:
+                continue
+            href  = link_el.get("href", "")
+            aria  = link_el.get("aria-label", "")
+            link  = abs_url(href, base)
+            # Title: everything before ", X.X stars" or ", Price" in aria-label
+            title_m = re.match(r'^(.*?)(?:,\s*[\d.]+\s*stars|,\s*Price)', aria)
+            title   = title_m.group(1).strip() if title_m else ""
+            if not title:
+                for t in card.stripped_strings:
+                    if len(t) > 5 and not t.startswith("$") and not t.isdigit():
+                        title = t
+                        break
+            # Price: Bunnings renders as '$' '99' '.98' separate text nodes
+            price = None
+            texts = list(card.stripped_strings)
+            for i, t in enumerate(texts):
+                if t == "$" and i + 1 < len(texts):
+                    dollars = texts[i + 1]
+                    cents   = texts[i + 2] if i + 2 < len(texts) else ".00"
+                    if re.match(r'\d+', dollars):
+                        price = clean_price("$" + f"{dollars}{cents}".replace(",", ""))
+                        break
+            if title and price and link:
+                results.append({"title": title, "price": price, "link": link})
+    except Exception as e:
+        print(f"[PARSER] bunnings: {e}")
     return results
 
 
