@@ -516,22 +516,41 @@ def _magento(html, base, **_):
     return results
 
 
-# ── Rubber Monkey (card-container anchor) ────────────────────────────────
+# ── Rubber Monkey (div.col-card container) ───────────────────────────────
 def _rubbermonkey(html, base, **_):
+    """
+    Rubber Monkey card structure (confirmed from live HTML):
+        <div class="col-card col-lg-3 col-12">
+          <div class="card card-container" data-product-id="125360">
+            <a class="stretched-link" href="/DJI-Osmo-Pocket-4">...</a>
+            <div class="product-details">
+              <h3 class="card-body">DJI Osmo Pocket 4</h3>
+              <span class="price-with-cents customerPrice">$769</span>
+            </div>
+          </div>
+        </div>
+    """
     results = []
     try:
         soup = BeautifulSoup(html, "lxml")
-        for card in soup.find_all("a", class_=re.compile("card-container"))[:12]:
-            href = abs_url(card.get("href",""), base)
-            name_el = card.find(class_=re.compile("product-details|card-title|name"))
-            title = name_el.get_text(strip=True) if name_el else ""
-            if not title:
-                text = card.get_text(" ", strip=True)
-                m = re.match(r'^(.{10,80?}?)\s*\$', text)
-                title = m.group(1).strip() if m else text[:60]
-            price_el = card.find(class_=re.compile("customerPrice|price-with-cents|card-rotator-card-price"))
+        for card in soup.select("div.col-card")[:24]:
+            # Link: a.stretched-link (relative href like /DJI-Osmo-Pocket-4)
+            link_el = card.select_one("a.stretched-link")
+            href = abs_url(link_el.get("href", "") if link_el else "", base)
+
+            # Title: h3.card-body
+            title_el = card.select_one("h3.card-body")
+            title = title_el.get_text(strip=True) if title_el else ""
+
+            # Price: span.price-with-cents or span.customerPrice
+            price_el = (
+                card.select_one("span.price-with-cents") or
+                card.select_one("span.customerPrice") or
+                card.select_one("[class*='customerPrice']")
+            )
             m = re.search(r'\$([\d,]+(?:\.\d+)?)', (price_el or card).get_text(" "))
-            price = float(m.group(1).replace(",","")) if m else None
+            price = float(m.group(1).replace(",", "")) if m else None
+
             if title and price and href:
                 results.append({"title": title, "price": price, "link": href})
     except Exception as e:
