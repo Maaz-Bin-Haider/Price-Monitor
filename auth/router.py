@@ -24,7 +24,8 @@ from analytics.queries import log_activity
 
 auth_router = APIRouter(tags=["auth"])
 templates   = Jinja2Templates(
-    directory=os.path.join(os.path.dirname(__file__), "templates")
+    # __file__ is now auth/router.py — go up one level to reach /app/templates/
+    directory=os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")
 )
 
 

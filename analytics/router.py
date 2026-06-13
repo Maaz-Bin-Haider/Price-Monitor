@@ -33,7 +33,8 @@ from analytics.queries import (
 
 analytics_router = APIRouter(prefix="/analytics", tags=["analytics"])
 templates = Jinja2Templates(
-    directory=os.path.join(os.path.dirname(__file__), "templates")
+    # __file__ is now analytics/router.py — go up one level to reach /app/templates/
+    directory=os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")
 )
 
 
