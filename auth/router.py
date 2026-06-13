@@ -1,5 +1,5 @@
 # auth_router.py
-# Place this file at: /app/auth_router.py  (same level as main.py)
+# auth/router.py — FastAPI router for login/logout and admin user management
 #
 # Uses your existing SessionLocal from db/models.py — synchronous SQLAlchemy,
 # same pattern as the rest of your project.
@@ -13,14 +13,14 @@ from fastapi.templating import Jinja2Templates
 import os
 
 from db.models import SessionLocal       # ← your existing session factory
-from auth import (
+from auth.core import (
     COOKIE_NAME, TOKEN_EXPIRE,
     authenticate_user, create_access_token,
     create_user, delete_user_by_id, get_user,
     list_users, list_locked_ips, toggle_user_active, unlock_ip,
 )
-from auth_middleware import get_current_user, require_admin
-from analytics import log_activity
+from auth.middleware import get_current_user, require_admin
+from analytics.queries import log_activity
 
 auth_router = APIRouter(tags=["auth"])
 templates   = Jinja2Templates(
@@ -112,7 +112,7 @@ async def login_submit(
 @auth_router.get("/auth/logout")
 async def logout(request: Request):
     try:
-        from auth import COOKIE_NAME as _cn, decode_token as _dt
+        from auth.core import COOKIE_NAME as _cn, decode_token as _dt
         _token = request.cookies.get(_cn)
         if _token:
             _p = _dt(_token)

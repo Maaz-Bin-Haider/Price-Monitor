@@ -1,5 +1,5 @@
 # analytics_router.py
-# Place at: /app/analytics_router.py  (same level as main.py)
+# analytics/router.py — FastAPI router for all analytics endpoints
 #
 # Mount in main.py:
 #   from analytics_router import analytics_router
@@ -15,8 +15,8 @@ from fastapi.templating import Jinja2Templates
 import os
 
 from db.models import SessionLocal
-from auth_middleware import require_admin
-from analytics import (
+from auth.middleware import require_admin
+from analytics.queries import (
     get_active_jobs_for_analytics,
     get_all_jobs_for_analytics,
     get_alert_stats,

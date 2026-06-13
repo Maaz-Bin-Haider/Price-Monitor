@@ -1,5 +1,5 @@
 # analytics_models.py
-# Place at: /app/analytics_models.py  (same level as main.py)
+# analytics/models.py — SQLAlchemy model for the activity_log table
 #
 # Adds the activity_log table to your existing PostgreSQL database.
 # The created_by_username column on watchlist_jobs is handled via

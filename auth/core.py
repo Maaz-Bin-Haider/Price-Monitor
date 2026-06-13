@@ -1,5 +1,5 @@
 # auth.py
-# Place this file at: /app/auth.py  (same level as main.py)
+# auth/core.py — Core authentication logic (JWT, bcrypt, brute-force)
 #
 # All DB calls are SYNCHRONOUS — matches your project's existing style
 # (SessionLocal, not AsyncSession).
@@ -12,7 +12,7 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
-from auth_models import AuthUser, AuthLoginAttempt
+from auth.models import AuthUser, AuthLoginAttempt
 
 # ── Config (values come from .env) ────────────────────────────────────────────
 SECRET_KEY    = os.getenv("AUTH_SECRET_KEY", "CHANGE_ME")

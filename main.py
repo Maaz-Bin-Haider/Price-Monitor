@@ -36,14 +36,14 @@ from scheduler import (
 from scraper.runner import run_search, run_availability_search
 
 # ── Auth ───────────────────────────────────────────────────────────────────
-from auth_middleware import AuthMiddleware
-from auth_router import auth_router
-import auth_models  # noqa — registers AuthUser/AuthLoginAttempt with SQLAlchemy Base
+from auth.middleware import AuthMiddleware
+from auth.router import auth_router
+from auth import models as auth_models  # noqa — registers AuthUser/AuthLoginAttempt with Base
 
 # ── Analytics ──────────────────────────────────────────────────────────────
-from analytics_router import analytics_router
-import analytics_models  # noqa — registers ActivityLog with Base
-from analytics import log_activity
+from analytics.router import analytics_router
+from analytics import models as analytics_models  # noqa — registers ActivityLog with Base
+from analytics.queries import log_activity
 
 app = FastAPI(title="Price Monitor")
 
@@ -141,7 +141,7 @@ async def startup_event():
 
     # ── Seed first admin if no users exist ────────────────────────────────
     from db.models import SessionLocal
-    from auth import list_users, create_user
+    from auth.core import list_users, create_user
     db = SessionLocal()
     try:
         if not list_users(db):

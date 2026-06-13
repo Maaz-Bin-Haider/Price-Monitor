@@ -117,7 +117,7 @@ from alembic import context
 # ── THIS IS THE CRITICAL PART ──────────────────────────
 # Must import Base AND all models so SQLAlchemy registers them
 from db.models import Base, WatchlistJob, RunResult, AlertLog
-import auth_models  # noqa — registers AuthUser / AuthLoginAttempt with Base
+from auth import models as auth_models  # noqa — registers AuthUser / AuthLoginAttempt with Base
 # ───────────────────────────────────────────────────────
 
 config = context.config

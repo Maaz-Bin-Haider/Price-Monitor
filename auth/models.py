@@ -1,5 +1,5 @@
 # auth_models.py
-# Place this file at: /app/auth_models.py  (same level as main.py)
+# auth/models.py — SQLAlchemy models for the auth system
 #
 # Uses the SAME Base and engine from db/models.py so the tables land
 # in your existing PostgreSQL database alongside watchlist_jobs etc.

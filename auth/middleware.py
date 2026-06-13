@@ -1,5 +1,5 @@
 # auth_middleware.py
-# Place this file at: /app/auth_middleware.py  (same level as main.py)
+# auth/middleware.py — FastAPI middleware for the login wall
 #
 # Wraps every single request.  Anything that isn't /login or /static
 # is redirected to /login unless a valid JWT cookie is present.
@@ -9,7 +9,7 @@ from fastapi.responses import RedirectResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
-from auth import COOKIE_NAME, decode_token
+from auth.core import COOKIE_NAME, decode_token
 
 # ── Paths that do NOT require a login ─────────────────────────────────────────
 PUBLIC_PATHS = [

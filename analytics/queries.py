@@ -1,5 +1,5 @@
 # analytics.py
-# Place at: /app/analytics.py  (same level as main.py)
+# analytics/queries.py — All DB query helpers for analytics
 #
 # All DB query helpers used by the analytics router.
 # Pure synchronous SQLAlchemy — same style as the rest of the project.
@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from db.models import SessionLocal, WatchlistJob, RunResult, AlertLog
-from analytics_models import ActivityLog
+from analytics.models import ActivityLog
 
 
 # ── Activity logging ───────────────────────────────────────────────────────────
@@ -189,7 +189,7 @@ def get_all_recent_activity(db: Session, limit: int = 200) -> list:
 
 def get_activity_summary_per_user(db: Session) -> list:
     """Returns per-user event counts for the summary table."""
-    from auth_models import AuthUser
+    from auth.models import AuthUser
     users = db.query(AuthUser).order_by(AuthUser.created_at.desc()).all()
     result = []
     for user in users:
