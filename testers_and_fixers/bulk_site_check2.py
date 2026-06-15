@@ -48,7 +48,7 @@ SITE_PRODUCTS = {
     "bigw.com.au":            "Apple AirPods Pro 3",
     "officeworks.com.au":     "Apple AirPods Pro 3",
     "thegoodguys.com.au":     "Sony WH-1000XM5 Headphones",
-    "bunnings.com.au":        "Starlink Standard 4 X",
+    "bunnings.com.au":        "Canon Xa65 4k Camcorder",
     "costco.com.au":          "Apple AirPods Pro",
     "anacondastores.com":     "Minelab Equinox 900 Metal Detector",
     "bcf.com.au":             "Minelab Gold Monster 1000 Metal Detector",

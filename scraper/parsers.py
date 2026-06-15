@@ -58,17 +58,37 @@ def abs_url(href: str, base: str) -> str:
     return base + (href if href.startswith("/") else "/" + href)
 
 
-# ── Shopify JSON (JB Hi-Fi, Jacobs Digital) ───────────────────────────────
+# ── Shopify / JB Hi-Fi (React — data-testid product cards) ───────────────
 def _shopify(html, base, **_):
-    pat = (r'\{"id":\d+,"gid":"[^"]*","vendor":"[^"]*","type":"[^"]*",'
-           r'"handle":"([^"]+)","variants":\[\{"id":\d+,"price":(\d+),"name":"([^"]+)"')
+    """
+    JB Hi-Fi AU/NZ uses a Shopify + React frontend.
+    Old JSON regex approach no longer works — product data is now
+    rendered as React components with data-testid attributes.
+
+    Card structure (confirmed from live heavy-tier HTML, June 2026):
+        <div data-testid="product-card-content">
+          <a data-testid="product-card-content-link" href="/products/slug">
+            <div data-testid="product-card-title">Sony WH-1000XM5 ...</div>
+          </a>
+          <div data-testid="ticket-price">419</div>
+        </div>
+    """
     results = []
-    for handle, cents, name in re.findall(pat, html):
-        try:
-            results.append({"title": name, "price": int(cents)/100,
-                             "link": f"{base}/products/{handle}"})
-        except Exception:
-            continue
+    try:
+        soup = BeautifulSoup(html, "lxml")
+        cards = soup.select('[data-testid="product-card-content"]')
+        for card in cards[:24]:
+            title_el = card.select_one('[data-testid="product-card-title"]')
+            title    = title_el.get_text(strip=True) if title_el else ""
+            link_el  = card.select_one('[data-testid="product-card-content-link"]')
+            href     = link_el.get("href", "") if link_el else ""
+            link     = abs_url(href, base)
+            price_el = card.select_one('[data-testid="ticket-price"]')
+            price    = clean_price(price_el.get_text(strip=True) if price_el else "")
+            if title and price and link:
+                results.append({"title": title, "price": price, "link": link})
+    except Exception as e:
+        print(f"[PARSER] shopify/jbhifi: {e}")
     return results
 
 

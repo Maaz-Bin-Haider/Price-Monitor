@@ -28,7 +28,7 @@ SITES = [
         "domain": "jbhifi.com.au",
         "tier": "heavy",
         "geo": "au",
-        "search_url": "https://www.jbhifi.com.au/search?q={query}",
+        "search_url": "https://www.jbhifi.com.au/search?query={query}",
     },
     {
         "name": "Harvey Norman AU",
@@ -42,7 +42,7 @@ SITES = [
         "domain": "jbhifi.co.nz",
         "tier": "heavy",
         "geo": "nz",
-        "search_url": "https://www.jbhifi.co.nz/search?q={query}",
+        "search_url": "https://www.jbhifi.co.nz/search?query={query}",
     },
     {
         "name": "Harvey Norman NZ",
