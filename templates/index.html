@@ -5,7 +5,7 @@
 <div class="page-header">
   <div>
     <h1 class="page-title">Watchlist</h1>
-    <p class="page-subtitle">{{ jobs|length }} product{% if jobs|length != 1 %}s{% endif %} monitored across AU &amp; NZ</p>
+    <p class="page-subtitle" id="subtitle-count">{{ jobs|length }} product{% if jobs|length != 1 %}s{% endif %} monitored across AU &amp; NZ</p>
   </div>
   <div style="display:flex;gap:0.5rem">
     <a href="/add-scout" class="btn btn-scout">🔍 Availability Scout</a>
@@ -26,8 +26,71 @@
   </div>
 </div>
 {% else %}
+
+{# ── Search + Filter bar ──────────────────────────────────────────── #}
+<div class="card" style="padding:1rem 1.25rem;margin-bottom:1rem">
+  <div style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:center">
+
+    {# Search input #}
+    <div style="position:relative;flex:1;min-width:220px">
+      <svg style="position:absolute;left:0.7rem;top:50%;transform:translateY(-50%);color:var(--muted-light);pointer-events:none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input
+        id="search-input"
+        type="text"
+        placeholder="Search products…"
+        autocomplete="off"
+        style="padding-left:2.1rem;width:100%"
+        oninput="applyFilters()"
+      >
+    </div>
+
+    {# Type filter #}
+    <div style="display:flex;align-items:center;gap:0.4rem;flex-shrink:0">
+      <span style="font-size:0.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap">Type</span>
+      <div class="filter-pill-group" id="filter-type">
+        <button class="filter-pill active" data-value="all"   onclick="setPill(this,'filter-type')">All</button>
+        <button class="filter-pill"        data-value="price" onclick="setPill(this,'filter-type')">💰 Price Watch</button>
+        <button class="filter-pill"        data-value="scout" onclick="setPill(this,'filter-type')">🔍 Scout</button>
+      </div>
+    </div>
+
+    {# Status filter #}
+    <div style="display:flex;align-items:center;gap:0.4rem;flex-shrink:0">
+      <span style="font-size:0.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap">Status</span>
+      <div class="filter-pill-group" id="filter-status">
+        <button class="filter-pill active" data-value="all"     onclick="setPill(this,'filter-status')">All</button>
+        <button class="filter-pill"        data-value="watching" onclick="setPill(this,'filter-status')">Watching</button>
+        <button class="filter-pill"        data-value="alerted" onclick="setPill(this,'filter-status')">Alerted</button>
+        <button class="filter-pill"        data-value="below"   onclick="setPill(this,'filter-status')">Below Target</button>
+        <button class="filter-pill"        data-value="never"   onclick="setPill(this,'filter-status')">Never Run</button>
+      </div>
+    </div>
+
+    {# Schedule filter #}
+    <div style="display:flex;align-items:center;gap:0.4rem;flex-shrink:0">
+      <span style="font-size:0.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap">Schedule</span>
+      <div class="filter-pill-group" id="filter-schedule">
+        <button class="filter-pill active" data-value="all"     onclick="setPill(this,'filter-schedule')">All</button>
+        <button class="filter-pill"        data-value="12h"     onclick="setPill(this,'filter-schedule')">12h</button>
+        <button class="filter-pill"        data-value="24h"     onclick="setPill(this,'filter-schedule')">24h</button>
+        <button class="filter-pill"        data-value="weekly"  onclick="setPill(this,'filter-schedule')">Weekly</button>
+        <button class="filter-pill"        data-value="monthly" onclick="setPill(this,'filter-schedule')">Monthly</button>
+      </div>
+    </div>
+
+    {# Clear button — hidden until filters are active #}
+    <button id="clear-btn" onclick="clearFilters()" style="display:none;flex-shrink:0" class="btn btn-ghost" style="font-size:0.75rem">
+      ✕ Clear
+    </button>
+
+  </div>
+</div>
+
+{# ── Table ────────────────────────────────────────────────────────── #}
 <div class="card" style="padding:0;overflow:hidden">
-  <table>
+  <table id="jobs-table">
     <thead>
       <tr>
         <th>Product</th>
@@ -40,19 +103,26 @@
         <th>Actions</th>
       </tr>
     </thead>
-    <tbody>
+    <tbody id="jobs-tbody">
       {% for job in jobs %}
       {% set sites = job.selected_sites | from_json %}
       {% set au_count = sites | selectattr_geo('au') | list | length %}
       {% set nz_count = sites | selectattr_geo('nz') | list | length %}
       {% set currency = 'AU$' if au_count >= nz_count else 'NZ$' %}
-      <tr>
+      {% set is_scout = job.job_type == 'availability_scout' %}
+      {% set is_below = not is_scout and job.target_price and job.last_lowest_price and job.last_lowest_price <= job.target_price %}
+      <tr
+        data-product="{{ job.product_name | lower }}"
+        data-type="{{ 'scout' if is_scout else 'price' }}"
+        data-status="{% if is_scout %}scouting{% elif is_below %}below{% elif job.alert_sent %}alerted{% elif not job.last_run_at %}never{% else %}watching{% endif %}"
+        data-schedule="{{ job.schedule_interval }}"
+      >
         <td>
           <div style="font-weight:600;color:var(--text);max-width:240px">{{ job.product_name }}</div>
           <div style="font-size:0.72rem;color:var(--muted-light);font-family:var(--mono);margin-top:0.15rem">#{{ job.id }}</div>
         </td>
         <td>
-          {% if job.job_type == 'availability_scout' %}
+          {% if is_scout %}
             <span class="badge badge-purple" style="font-size:0.68rem">🔍 Scout</span>
           {% elif job.target_price %}
             <div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.15rem">Target</div>
@@ -86,12 +156,10 @@
         </td>
         <td>
           {% if job.last_lowest_price %}
-            {% set is_scout = job.job_type == 'availability_scout' %}
-            {% set below = not is_scout and job.target_price and job.last_lowest_price <= job.target_price %}
-            <span class="price {% if below %}price-green{% else %}price-normal{% endif %}">
+            <span class="price {% if is_below %}price-green{% else %}price-normal{% endif %}">
               {{ currency }}{{ "%.2f"|format(job.last_lowest_price) }}
             </span>
-            {% if below %}
+            {% if is_below %}
               <div style="font-size:0.68rem;color:var(--green);margin-top:0.1rem">✓ below target</div>
             {% endif %}
           {% else %}
@@ -99,7 +167,7 @@
           {% endif %}
         </td>
         <td>
-          {% if job.job_type == 'availability_scout' %}
+          {% if is_scout %}
             <span class="badge badge-purple">Scouting</span>
           {% elif job.alert_sent %}
             <span class="badge badge-amber">Alerted</span>
@@ -125,15 +193,133 @@
       {% endfor %}
     </tbody>
   </table>
+
+  {# Empty state shown when filters produce zero results #}
+  <div id="no-results" style="display:none;text-align:center;padding:3.5rem 2rem">
+    <div style="font-size:2rem;margin-bottom:0.75rem">🔎</div>
+    <div style="font-weight:600;color:var(--text);margin-bottom:0.35rem">No products match</div>
+    <div style="font-size:0.85rem;color:var(--muted);margin-bottom:1rem">Try a different search term or adjust the filters.</div>
+    <button class="btn btn-ghost" onclick="clearFilters()">Clear filters</button>
+  </div>
 </div>
-{% endif %}
+
+<style>
+/* ── Filter pills ──────────────────────────────────────────────────── */
+.filter-pill-group {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+.filter-pill {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.3rem 0.7rem;
+  border-radius: 20px;
+  border: 1px solid var(--border-mid);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.12s;
+  line-height: 1;
+}
+.filter-pill:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-light);
+}
+.filter-pill.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+/* Highlight matched search text */
+mark {
+  background: #fef9c3;
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+/* Dimmed row when filtered out (fade before hide so layout is stable) */
+tr.row-hidden { display: none; }
+</style>
 
 <script>
+// ── Data attributes stamped on each row by Jinja ─────────────────────────
+// data-product  : lowercased product name
+// data-type     : 'price' | 'scout'
+// data-status   : 'watching' | 'alerted' | 'below' | 'never' | 'scouting'
+// data-schedule : '12h' | '24h' | 'weekly' | 'monthly'
+
+const TOTAL = {{ jobs|length }};
+
+function activeFilter(groupId) {
+  const active = document.querySelector(`#${groupId} .filter-pill.active`);
+  return active ? active.dataset.value : 'all';
+}
+
+function setPill(btn, groupId) {
+  document.querySelectorAll(`#${groupId} .filter-pill`).forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilters();
+}
+
+function applyFilters() {
+  const query    = document.getElementById('search-input').value.trim().toLowerCase();
+  const type     = activeFilter('filter-type');
+  const status   = activeFilter('filter-status');
+  const schedule = activeFilter('filter-schedule');
+
+  const rows = document.querySelectorAll('#jobs-tbody tr');
+  let visible = 0;
+
+  rows.forEach(row => {
+    const product  = row.dataset.product  || '';
+    const rowType  = row.dataset.type     || '';
+    const rowStat  = row.dataset.status   || '';
+    const rowSched = row.dataset.schedule || '';
+
+    const matchSearch   = !query    || product.includes(query);
+    const matchType     = type     === 'all' || rowType  === type;
+    const matchStatus   = status   === 'all' || rowStat  === status  || (status === 'watching' && rowStat === 'scouting');
+    const matchSchedule = schedule === 'all' || rowSched === schedule;
+
+    const show = matchSearch && matchType && matchStatus && matchSchedule;
+    row.classList.toggle('row-hidden', !show);
+    if (show) visible++;
+  });
+
+  // Update subtitle count
+  const noun = visible === 1 ? 'product' : 'products';
+  const filtered = visible < TOTAL ? ` (${visible} of ${TOTAL})` : '';
+  document.getElementById('subtitle-count').textContent =
+    `${TOTAL} product${TOTAL !== 1 ? 's' : ''} monitored across AU & NZ${filtered}`;
+
+  // Show/hide no-results state
+  document.getElementById('no-results').style.display = visible === 0 ? 'block' : 'none';
+  document.getElementById('jobs-table').style.display = visible === 0 ? 'none' : '';
+
+  // Show/hide clear button
+  const isFiltered = query || type !== 'all' || status !== 'all' || schedule !== 'all';
+  document.getElementById('clear-btn').style.display = isFiltered ? 'inline-flex' : 'none';
+}
+
+function clearFilters() {
+  document.getElementById('search-input').value = '';
+  ['filter-type','filter-status','filter-schedule'].forEach(groupId => {
+    document.querySelectorAll(`#${groupId} .filter-pill`).forEach(p => {
+      p.classList.toggle('active', p.dataset.value === 'all');
+    });
+  });
+  applyFilters();
+}
+
+// ── Run now handler (unchanged) ───────────────────────────────────────────
 function handleRunNow(event, jobId) {
-  const btn = event.currentTarget;
-  const label = btn.querySelector('.btn-label');
+  const btn     = event.currentTarget;
+  const label   = btn.querySelector('.btn-label');
   const spinner = btn.querySelector('.spinner');
-  label.style.display = 'none';
+  label.style.display   = 'none';
   spinner.style.display = 'inline-block';
   btn.disabled = true;
 
@@ -144,7 +330,7 @@ function handleRunNow(event, jobId) {
         const status = document.getElementById('run-status-' + jobId);
         status.innerHTML = '<span style="color:var(--red);font-size:0.75rem">Error</span>';
         btn.disabled = false;
-        label.style.display = 'inline';
+        label.style.display   = 'inline';
         spinner.style.display = 'none';
       } else {
         window.location.href = '/job/' + data.job_id;
@@ -152,10 +338,19 @@ function handleRunNow(event, jobId) {
     })
     .catch(() => {
       btn.disabled = false;
-      label.style.display = 'inline';
+      label.style.display   = 'inline';
       spinner.style.display = 'none';
     });
   event.preventDefault();
 }
+
+// Focus search on "/" keypress (convenience)
+document.addEventListener('keydown', e => {
+  if (e.key === '/' && document.activeElement.tagName !== 'INPUT') {
+    e.preventDefault();
+    document.getElementById('search-input').focus();
+  }
+});
 </script>
+{% endif %}
 {% endblock %}
