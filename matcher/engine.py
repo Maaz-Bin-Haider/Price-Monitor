@@ -47,6 +47,34 @@ STRONG_ACCESSORY_PHRASES = [
     "transmitter", "receiver",
     # Covers and skins
     "front cover", "back cover", "lens cover",
+    # ── Metal detector accessories (Minelab and general) ─────────────────────
+    # Search coils — these are attachments, never the detector itself
+    "search coil", "skid plate", "skidplate", "coil cover",
+    "coil bolt", "coil washer", "coil wear kit",
+    "dd coil", "double-d coil", "concentric coil", "toroidal coil",
+    "elliptical coil", "round coil",
+    # Structural / mechanical parts
+    "lower shaft", "middle shaft", "upper shaft", "shaft assembly",
+    "armrest kit", "armrest replacement",
+    "yoke washer", "mounting hardware",
+    "strut", "crossbar kit", "parts kit",
+    "hinge", "guide arm",
+    "hip mount kit", "belt clip",
+    # Harness / swing systems
+    "harness", "pro-swing", "swing arm",
+    # Pinpointers (separate handheld tool, not the detector)
+    "pro-find", "pinpointer",
+    # Audio / wireless modules for detectors
+    "wireless module", "headphone module", "audio module",
+    "wireless headphone", "wireless earphone",
+    # Ground-balancing accessories
+    "ferrite ring", "ground ferrite", "balance ferrite",
+    # Digging / field tools
+    "digging tool", "digger",
+    "specimen bottle", "finds bag", "rubbish bag",
+    "gloves", "gold pan", "panning kit",
+    # Protective / carry
+    "detector bag", "detector case", "carry bag",
 ]
 
 WEAK_ACCESSORY_PHRASES = [
@@ -152,7 +180,45 @@ def _is_bundle(candidate: str) -> bool:
     return False
 
 
-# ── ACCESSORY DETECTION ───────────────────────────────────────────────────────
+
+# ── "FOR PRODUCT" SUFFIX DETECTION ───────────────────────────────────────────
+
+def _for_product_penalty(query: str, candidate: str) -> float:
+    """
+    Detects titles of the form "Accessory for <product name>" where the
+    candidate embeds the query (or most of it) purely as a compatibility
+    descriptor — not because the candidate IS the product.
+
+    Example:
+        query     = "Minelab Equinox 900 Metal Detector"
+        candidate = "Coil for Minelab Equinox 900 Metal Detector"
+        → token_set_ratio = 100, but this is clearly an accessory
+
+    The rule: if the normalised candidate contains " for " followed by at
+    least 3 words of the normalised query, it is a compatibility-suffix
+    title and gets a strong penalty.
+    """
+    q = normalise(query)
+    c = normalise(candidate)
+
+    if " for " not in c:
+        return 1.0
+
+    # Extract the portion after the last " for "
+    after_for = c.rsplit(" for ", 1)[-1]
+    q_words   = set(q.split())
+
+    # Count how many query words appear in the "for …" tail
+    tail_words = set(after_for.split())
+    overlap    = q_words & tail_words
+
+    # If 3+ query words appear after "for", this is a compatibility label
+    if len(overlap) >= 3:
+        return STRONG_PENALTY
+
+    return 1.0
+
+
 
 def _accessory_penalty(query: str, candidate: str) -> float:
     """
@@ -241,6 +307,11 @@ def score(query: str, candidate: str) -> float:
     # Apply accessory penalty (tiered, phrase-aware, bundle-aware)
     accessory_mult = _accessory_penalty(query, candidate)
     base = base * accessory_mult
+
+    # Apply "for <product>" suffix penalty
+    # e.g. "Coil for Minelab Equinox 900 Metal Detector" → penalise
+    for_product_mult = _for_product_penalty(query, candidate)
+    base = base * for_product_mult
 
     # Apply model mismatch penalty
     model_mult = _model_mismatch_penalty(q, c)
