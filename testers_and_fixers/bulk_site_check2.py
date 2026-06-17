@@ -73,7 +73,17 @@ MATCH_THRESHOLD = 50   # lower than normal since test products are broad
 
 # ── Fetch ─────────────────────────────────────────────────────────────────────
 
+_502_MAX_RETRIES = 3    # sequential attempts before giving up on a 502
+_502_RETRY_DELAY = 5.0  # seconds to wait between 502 retry attempts
+
+
 async def fetch_site(site: dict, product: str, timeout: int) -> dict:
+    """Fetch one site via Scrape.do.
+
+    On HTTP 502 (Bad Gateway) the request is retried up to _502_MAX_RETRIES
+    times with a short delay between each attempt before giving up.
+    All other non-200 responses fail immediately (no retry).
+    """
     import urllib.parse
     query = urllib.parse.quote_plus(product)
     url   = site["search_url"].format(query=query)
@@ -93,16 +103,47 @@ async def fetch_site(site: dict, product: str, timeout: int) -> dict:
         params["super"] = "true"
 
     start = time.time()
-    try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            resp = await client.get("https://api.scrape.do", params=params)
-        elapsed = time.time() - start
-        if resp.status_code == 200:
-            return {"html": resp.text, "status": 200, "elapsed": elapsed, "url": url}
-        else:
+
+    for attempt in range(1, _502_MAX_RETRIES + 1):
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                resp = await client.get("https://api.scrape.do", params=params)
+            elapsed = time.time() - start
+
+            if resp.status_code == 200:
+                return {"html": resp.text, "status": 200, "elapsed": elapsed, "url": url}
+
+            if resp.status_code == 502:
+                if attempt < _502_MAX_RETRIES:
+                    print(
+                        f"{YELLOW}  [RETRY] 502 for {site['domain']} "
+                        f"(attempt {attempt}/{_502_MAX_RETRIES}) — retrying in {_502_RETRY_DELAY:.0f}s{RESET}"
+                    )
+                    await asyncio.sleep(_502_RETRY_DELAY)
+                    continue  # next attempt
+                else:
+                    print(
+                        f"{RED}  [RETRY] 502 for {site['domain']} "
+                        f"(attempt {attempt}/{_502_MAX_RETRIES}) — giving up{RESET}"
+                    )
+                    return {"html": None, "status": 502, "elapsed": elapsed, "url": url}
+
+            # Any other non-200: fail immediately
             return {"html": None, "status": resp.status_code, "elapsed": elapsed, "url": url}
-    except Exception as e:
-        return {"html": None, "status": 0, "elapsed": time.time()-start, "url": url, "error": str(e)}
+
+        except Exception as e:
+            elapsed = time.time() - start
+            if attempt < _502_MAX_RETRIES:
+                print(
+                    f"{YELLOW}  [RETRY] Exception for {site['domain']} "
+                    f"(attempt {attempt}/{_502_MAX_RETRIES}): {e} — retrying in {_502_RETRY_DELAY:.0f}s{RESET}"
+                )
+                await asyncio.sleep(_502_RETRY_DELAY)
+                continue
+            return {"html": None, "status": 0, "elapsed": elapsed, "url": url, "error": str(e)}
+
+    # Should never reach here
+    return {"html": None, "status": 0, "elapsed": time.time() - start, "url": url, "error": "retry exhausted"}
 
 
 # ── Test one site ──────────────────────────────────────────────────────────────
