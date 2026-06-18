@@ -2,7 +2,7 @@ import json
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, joinedload, sessionmaker
 
 from db.models import AlertLog, Base, Company, RunResult, WatchlistJob, engine
 
@@ -157,6 +157,7 @@ def get_all_active_jobs() -> list[WatchlistJob]:
     try:
         return (
             db.query(WatchlistJob)
+            .options(joinedload(WatchlistJob.company))
             .filter(WatchlistJob.is_active == True)
             .order_by(WatchlistJob.created_at.desc())
             .all()
@@ -171,7 +172,12 @@ def get_all_active_jobs() -> list[WatchlistJob]:
 def get_job_by_id(job_id: int) -> Optional[WatchlistJob]:
     db = get_db()
     try:
-        return db.query(WatchlistJob).filter(WatchlistJob.id == job_id).first()
+        return (
+            db.query(WatchlistJob)
+            .options(joinedload(WatchlistJob.company))
+            .filter(WatchlistJob.id == job_id)
+            .first()
+        )
     except Exception as e:
         print(f"[DB ERROR] get_job_by_id({job_id}): {e}")
         return None
