@@ -13,11 +13,16 @@ from config import SITES, settings
 from db.crud import (
     complete_run,
     create_alert_log,
+    create_company,
     create_job,
     create_run,
+    delete_company,
     get_all_active_jobs,
+    get_all_companies,
+    get_companies_with_active_jobs,
     get_job_by_id,
     get_runs_for_job,
+    seed_default_companies,
     soft_delete_job,
     update_alert_sent,
     update_job,
@@ -99,44 +104,64 @@ def _datetime_fmt(dt: Optional[datetime]) -> str:
 
 
 def _selectattr_geo(domains: list, geo: str) -> list:
-    """Filter a list of domain strings by geo."""
     return [d for d in domains if SITES_BY_DOMAIN.get(d, {}).get("geo") == geo]
 
 
 def _site_names_from_domains(domains: list) -> list:
-    """Convert domain strings to site names for tooltip."""
     return [SITES_BY_DOMAIN.get(d, {}).get("name", d) for d in domains]
 
 
 # Register Jinja2 filters
-templates.env.filters["from_json"] = _from_json
-templates.env.filters["time_ago"] = _time_ago
-templates.env.filters["datetime_fmt"] = _datetime_fmt
-templates.env.filters["selectattr_geo"] = _selectattr_geo
+templates.env.filters["from_json"]               = _from_json
+templates.env.filters["time_ago"]                = _time_ago
+templates.env.filters["datetime_fmt"]            = _datetime_fmt
+templates.env.filters["selectattr_geo"]          = _selectattr_geo
 templates.env.filters["site_names_from_domains"] = _site_names_from_domains
 
 
 # ── Startup / Shutdown ─────────────────────────────────────────────────────
 @app.on_event("startup")
 async def startup_event():
-    # Create all tables: existing (watchlist_jobs etc.) + new auth tables
+    # ── Step 1: Create any missing tables ─────────────────────────────────
+    # create_all() is safe — it never drops or modifies existing tables/data.
+    # It creates: companies (new), watchlist_jobs, run_results, alert_log,
+    # auth tables, analytics tables.
     Base.metadata.create_all(bind=engine)
 
-    # ── Add created_by_username column to watchlist_jobs if not present ────
-    # This is a one-time migration — safe to run on every startup.
+    # ── Step 2: Column migrations — MUST run before restore_all_jobs() ────
+    # restore_all_jobs() issues a SELECT that includes every ORM column.
+    # If a column doesn't exist yet in the live DB the query crashes.
+    # We use SQLAlchemy inspect() so this works on both Postgres and SQLite.
     try:
-        from sqlalchemy import text as _text
+        from sqlalchemy import text as _text, inspect as _inspect
+        _existing = {c["name"] for c in _inspect(engine).get_columns("watchlist_jobs")}
+
         with engine.connect() as _conn:
-            _conn.execute(_text(
-                "ALTER TABLE watchlist_jobs ADD COLUMN IF NOT EXISTS "
-                "created_by_username VARCHAR(64) DEFAULT 'unknown'"
-            ))
+            if "created_by_username" not in _existing:
+                _conn.execute(_text(
+                    "ALTER TABLE watchlist_jobs ADD COLUMN"
+                    " created_by_username VARCHAR(64) DEFAULT 'unknown'"
+                ))
+                print("[MIGRATE] Added created_by_username column")
+
+            if "company_id" not in _existing:
+                _conn.execute(_text(
+                    "ALTER TABLE watchlist_jobs ADD COLUMN"
+                    " company_id INTEGER REFERENCES companies(id)"
+                ))
+                print("[MIGRATE] Added company_id column")
+
             _conn.commit()
     except Exception as _e:
-        print(f"[MIGRATE] created_by_username column: {_e}")
+        print(f"[MIGRATE] Column migration error: {_e}")
 
+    # ── Step 3: Restore scheduler — all columns now guaranteed to exist ───
     restore_all_jobs()
     get_scheduler().start()
+
+    # ── Step 4: Seed default companies ────────────────────────────────────
+    seed_default_companies()
+
     print("[APP] Price Monitor started")
 
     # ── Seed first admin if no users exist ────────────────────────────────
@@ -148,7 +173,7 @@ async def startup_event():
             create_user(
                 db         = db,
                 username   = "admin",
-                password   = "ChangeMe123!",   # ← change this after first login
+                password   = "ChangeMe123!",
                 email      = None,
                 is_admin   = True,
                 created_by = "system",
@@ -169,18 +194,25 @@ async def shutdown_event():
 
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
-    jobs = get_all_active_jobs()
-    return templates.TemplateResponse("index.html", {"request": request, "jobs": jobs})
+    jobs      = get_all_active_jobs()
+    companies = get_all_companies()
+    return templates.TemplateResponse("index.html", {
+        "request":   request,
+        "jobs":      jobs,
+        "companies": companies,
+    })
 
 
 @app.get("/add", response_class=HTMLResponse)
 async def add_form(request: Request):
-    sites_au = [s for s in SITES if s["geo"] == "au"]
-    sites_nz = [s for s in SITES if s["geo"] == "nz"]
+    sites_au  = [s for s in SITES if s["geo"] == "au"]
+    sites_nz  = [s for s in SITES if s["geo"] == "nz"]
+    companies = get_all_companies()
     return templates.TemplateResponse("add.html", {
-        "request": request,
-        "sites_au": sites_au,
-        "sites_nz": sites_nz,
+        "request":   request,
+        "sites_au":  sites_au,
+        "sites_nz":  sites_nz,
+        "companies": companies,
     })
 
 
@@ -191,31 +223,37 @@ async def add_submit(
     target_price: float = Form(...),
     user_email: str = Form(...),
     schedule_interval: str = Form(...),
+    company_id: str = Form(...),
 ):
-    form = await request.form()
+    form           = await request.form()
     selected_sites = form.getlist("selected_sites")
+    companies      = get_all_companies()
 
-    if not selected_sites:
-        sites_au = [s for s in SITES if s["geo"] == "au"]
-        sites_nz = [s for s in SITES if s["geo"] == "nz"]
+    def _err(msg: str):
         return templates.TemplateResponse("add.html", {
-            "request": request,
-            "sites_au": sites_au,
-            "sites_nz": sites_nz,
-            "error": "Please select at least one site.",
+            "request":   request,
+            "sites_au":  [s for s in SITES if s["geo"] == "au"],
+            "sites_nz":  [s for s in SITES if s["geo"] == "nz"],
+            "companies": companies,
+            "error":     msg,
         }, status_code=400)
 
-    # Capture the logged-in username for attribution
+    if not selected_sites:
+        return _err("Please select at least one site.")
+    if not company_id:
+        return _err("Please select a company.")
+
     _creator = getattr(request.state, "username", "unknown")
 
     job = create_job({
-        "job_type": "price_watch",
-        "product_name": product_name,
-        "target_price": target_price,
-        "user_email": user_email,
-        "schedule_interval": schedule_interval,
-        "selected_sites": selected_sites,
-        "created_by_username": _creator,
+        "job_type":             "price_watch",
+        "product_name":         product_name,
+        "target_price":         target_price,
+        "user_email":           user_email,
+        "schedule_interval":    schedule_interval,
+        "selected_sites":       selected_sites,
+        "created_by_username":  _creator,
+        "company_id":           company_id,
     })
 
     if job:
@@ -233,12 +271,14 @@ async def add_submit(
 
 @app.get("/add-scout", response_class=HTMLResponse)
 async def add_scout_form(request: Request):
-    sites_au = [s for s in SITES if s["geo"] == "au"]
-    sites_nz = [s for s in SITES if s["geo"] == "nz"]
+    sites_au  = [s for s in SITES if s["geo"] == "au"]
+    sites_nz  = [s for s in SITES if s["geo"] == "nz"]
+    companies = get_all_companies()
     return templates.TemplateResponse("add_scout.html", {
-        "request": request,
-        "sites_au": sites_au,
-        "sites_nz": sites_nz,
+        "request":   request,
+        "sites_au":  sites_au,
+        "sites_nz":  sites_nz,
+        "companies": companies,
     })
 
 
@@ -248,30 +288,37 @@ async def add_scout_submit(
     product_name: str = Form(...),
     user_email: str = Form(...),
     schedule_interval: str = Form(...),
+    company_id: str = Form(...),
 ):
-    form = await request.form()
+    form           = await request.form()
     selected_sites = form.getlist("selected_sites")
+    companies      = get_all_companies()
+
+    def _err(msg: str):
+        return templates.TemplateResponse("add_scout.html", {
+            "request":   request,
+            "sites_au":  [s for s in SITES if s["geo"] == "au"],
+            "sites_nz":  [s for s in SITES if s["geo"] == "nz"],
+            "companies": companies,
+            "error":     msg,
+        }, status_code=400)
 
     if not selected_sites:
-        sites_au = [s for s in SITES if s["geo"] == "au"]
-        sites_nz = [s for s in SITES if s["geo"] == "nz"]
-        return templates.TemplateResponse("add_scout.html", {
-            "request": request,
-            "sites_au": sites_au,
-            "sites_nz": sites_nz,
-            "error": "Please select at least one site.",
-        }, status_code=400)
+        return _err("Please select at least one site.")
+    if not company_id:
+        return _err("Please select a company.")
 
     _creator = getattr(request.state, "username", "unknown")
 
     job = create_job({
-        "job_type": "availability_scout",
-        "product_name": product_name,
-        "target_price": None,
-        "user_email": user_email,
-        "schedule_interval": schedule_interval,
-        "selected_sites": selected_sites,
+        "job_type":            "availability_scout",
+        "product_name":        product_name,
+        "target_price":        None,
+        "user_email":          user_email,
+        "schedule_interval":   schedule_interval,
+        "selected_sites":      selected_sites,
         "created_by_username": _creator,
+        "company_id":          company_id,
     })
 
     if job:
@@ -295,8 +342,8 @@ async def job_detail(request: Request, job_id: int):
     runs = get_runs_for_job(job_id, limit=50)
     return templates.TemplateResponse("detail.html", {
         "request": request,
-        "job": job,
-        "runs": runs,
+        "job":     job,
+        "runs":    runs,
     })
 
 
@@ -337,24 +384,24 @@ async def run_now(job_id: int):
         if job_type == "availability_scout":
             success = await send_availability_email(job, result.get("available_sites", []))
             create_alert_log({
-                "job_id": job_id,
-                "run_result_id": run.id,
-                "email_to": job.user_email,
+                "job_id":            job_id,
+                "run_result_id":     run.id,
+                "email_to":          job.user_email,
                 "sites_below_target": result.get("available_sites", []),
                 "lowest_price_found": result.get("lowest_price") or 0,
-                "send_status": "sent" if success else "failed",
+                "send_status":       "sent" if success else "failed",
             })
             alert_triggered = success
         else:
             if result["should_alert"] and not job.alert_sent:
                 success = await send_alert_email(job, result["below_target"])
                 create_alert_log({
-                    "job_id": job_id,
-                    "run_result_id": run.id,
-                    "email_to": job.user_email,
+                    "job_id":            job_id,
+                    "run_result_id":     run.id,
+                    "email_to":          job.user_email,
                     "sites_below_target": result["below_target"],
                     "lowest_price_found": result["lowest_price"] or 0,
-                    "send_status": "sent" if success else "failed",
+                    "send_status":       "sent" if success else "failed",
                 })
                 update_alert_sent(job_id, True)
                 alert_triggered = True
@@ -362,20 +409,19 @@ async def run_now(job_id: int):
                 update_alert_sent(job_id, False)
 
     complete_run(run.id, {
-        "results": result.get("results", []),
+        "results":       result.get("results", []),
         "sites_checked": result.get("sites_checked", []),
-        "lowest_price": result.get("lowest_price"),
-        "lowest_site": result.get("lowest_site"),
+        "lowest_price":  result.get("lowest_price"),
+        "lowest_site":   result.get("lowest_site"),
         "alert_triggered": alert_triggered,
-        "error_sites": result.get("error_sites", []),
+        "error_sites":   result.get("error_sites", []),
     })
 
     next_run = _get_next_run_time(job.schedule_interval if job else "24h")
     update_last_run(job_id, result.get("lowest_price"), next_run)
 
-    # Log the manual run
     log_activity(
-        username   = "system",   # run_now has no request auth context easily accessible
+        username   = "system",
         event_type = "job_run_now",
         detail     = f"Manual run triggered for job #{job_id}",
         job_id     = job_id,
@@ -392,8 +438,8 @@ async def edit_form(request: Request, job_id: int):
     sites_au = [s for s in SITES if s["geo"] == "au"]
     sites_nz = [s for s in SITES if s["geo"] == "nz"]
     return templates.TemplateResponse("edit.html", {
-        "request": request,
-        "job": job,
+        "request":  request,
+        "job":      job,
         "sites_au": sites_au,
         "sites_nz": sites_nz,
     })
@@ -408,15 +454,15 @@ async def edit_submit(
     user_email: str = Form(...),
     schedule_interval: str = Form(...),
 ):
-    form = await request.form()
+    form           = await request.form()
     selected_sites = form.getlist("selected_sites")
 
     update_job(job_id, {
-        "product_name": product_name,
-        "target_price": target_price,
-        "user_email": user_email,
+        "product_name":      product_name,
+        "target_price":      target_price,
+        "user_email":        user_email,
         "schedule_interval": schedule_interval,
-        "selected_sites": selected_sites,
+        "selected_sites":    selected_sites,
     })
 
     cancel_job(job_id)
@@ -436,8 +482,8 @@ async def edit_submit(
 
 @app.post("/job/{job_id}/delete")
 async def delete_job(job_id: int, request: Request):
-    _job = get_job_by_id(job_id)
-    _name = _job.product_name if _job else f"#{job_id}"
+    _job   = get_job_by_id(job_id)
+    _name  = _job.product_name if _job else f"#{job_id}"
     _actor = getattr(request.state, "username", "unknown")
     soft_delete_job(job_id)
     cancel_job(job_id)
@@ -455,6 +501,46 @@ async def delete_job(job_id: int, request: Request):
 async def health():
     scheduler = get_scheduler()
     return JSONResponse({
-        "status": "ok",
-        "scheduler_running": scheduler.running,
+        "status":             "ok",
+        "scheduler_running":  scheduler.running,
     })
+
+
+# ── Companies ──────────────────────────────────────────────────────────────
+
+@app.get("/companies", response_class=HTMLResponse)
+async def companies_page(request: Request):
+    data = get_companies_with_active_jobs()
+    return templates.TemplateResponse("companies.html", {
+        "request":      request,
+        "company_data": data,
+    })
+
+
+@app.post("/api/companies")
+async def api_create_company(request: Request):
+    """JSON endpoint — body: {name: str} → {id, name} | {error: str}"""
+    try:
+        body = await request.json()
+        name = (body.get("name") or "").strip()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON"}, status_code=400)
+    if not name:
+        return JSONResponse({"error": "Name is required"}, status_code=400)
+    company, err = create_company(name)
+    if err and not company:
+        return JSONResponse({"error": err}, status_code=409)
+    return JSONResponse({"id": company.id, "name": company.name})
+
+
+@app.post("/companies/{company_id}/delete")
+async def delete_company_route(request: Request, company_id: int):
+    ok, msg = delete_company(company_id)
+    if not ok:
+        data = get_companies_with_active_jobs()
+        return templates.TemplateResponse("companies.html", {
+            "request":      request,
+            "company_data": data,
+            "error":        msg,
+        }, status_code=400)
+    return RedirectResponse(url="/companies", status_code=303)

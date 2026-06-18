@@ -33,6 +33,28 @@
       </div>
 
       <div class="form-group">
+        <label for="company_id">Company <span style="color:var(--red)">*</span></label>
+        <select id="company_id" name="company_id" required onchange="handleCompanyChange()">
+          <option value="">— Select company —</option>
+          {% for c in companies %}
+          <option value="{{ c.id }}">{{ c.name }}</option>
+          {% endfor %}
+          <option value="__new__">＋ Add new company…</option>
+        </select>
+        <div id="new-company-panel" style="display:none;margin-top:0.6rem;background:var(--accent-light);border:1px solid var(--accent-mid);border-radius:var(--radius-sm);padding:0.75rem">
+          <label style="font-size:0.78rem;font-weight:600;color:var(--accent-hover);margin-bottom:0.35rem;display:block">New company name</label>
+          <div style="display:flex;gap:0.5rem;align-items:center">
+            <input type="text" id="new-company-input" placeholder="e.g. Panasonic" style="flex:1;margin:0"
+                   oninput="clearCompanyMsg()"
+                   onkeydown="if(event.key==='Enter'){event.preventDefault();saveNewCompany()}">
+            <button type="button" class="btn btn-primary" style="flex-shrink:0;padding:0.5rem 0.9rem" onclick="saveNewCompany()">Save</button>
+            <button type="button" class="btn btn-ghost"  style="flex-shrink:0;padding:0.5rem 0.9rem" onclick="cancelNewCompany()">Cancel</button>
+          </div>
+          <div id="company-msg" style="font-size:0.75rem;margin-top:0.4rem"></div>
+        </div>
+      </div>
+
+      <div class="form-group">
         <label for="target_price">Target Price (AUD/NZD)</label>
         <input type="number" id="target_price" name="target_price"
                placeholder="299.00" step="0.01" min="0.01" required>
@@ -142,7 +164,42 @@ function validateForm() {
     return false;
   }
   document.getElementById('site-error').style.display = 'none';
+  const cid = document.getElementById('company_id').value;
+  if (!cid || cid === '__new__') {
+    document.getElementById('company_id').focus();
+    return false;
+  }
   return true;
+}
+function handleCompanyChange() {
+  const val = document.getElementById('company_id').value;
+  document.getElementById('new-company-panel').style.display = val === '__new__' ? 'block' : 'none';
+  if (val === '__new__') document.getElementById('new-company-input').focus();
+}
+function clearCompanyMsg() { document.getElementById('company-msg').textContent = ''; }
+function cancelNewCompany() {
+  document.getElementById('new-company-panel').style.display = 'none';
+  document.getElementById('company_id').value = '';
+  document.getElementById('new-company-input').value = '';
+  clearCompanyMsg();
+}
+async function saveNewCompany() {
+  const name = document.getElementById('new-company-input').value.trim();
+  const msg  = document.getElementById('company-msg');
+  if (!name) { msg.style.color='var(--red)'; msg.textContent='Please enter a name.'; return; }
+  msg.style.color='var(--muted)'; msg.textContent='Saving…';
+  try {
+    const resp = await fetch('/api/companies',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+    const data = await resp.json();
+    if (data.error && !data.id) { msg.style.color='var(--red)'; msg.textContent=data.error; return; }
+    const sel = document.getElementById('company_id');
+    let opt = Array.from(sel.options).find(o => o.value == data.id);
+    if (!opt) { opt = new Option(data.name, data.id); sel.insertBefore(opt, sel.options[sel.options.length-1]); }
+    sel.value = data.id;
+    document.getElementById('new-company-panel').style.display = 'none';
+    document.getElementById('new-company-input').value = '';
+    msg.textContent = '';
+  } catch(e) { msg.style.color='var(--red)'; msg.textContent='Network error.'; }
 }
 </script>
 {% endblock %}

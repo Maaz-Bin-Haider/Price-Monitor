@@ -61,6 +61,17 @@
       </div>
 
       <div class="filter-group">
+        <label class="filter-label" for="filter-company">Company</label>
+        <select id="filter-company" onchange="applyFilters()">
+          <option value="all">All companies</option>
+          <option value="__none__">— No company —</option>
+          {% for c in companies %}
+          <option value="{{ c.id }}">{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="filter-group">
         <label class="filter-label" for="filter-schedule">Schedule</label>
         <select id="filter-schedule" onchange="applyFilters()">
           <option value="all">All schedules</option>
@@ -89,6 +100,7 @@
     <thead>
       <tr>
         <th>Product</th>
+        <th>Company</th>
         <th>Type / Target</th>
         <th>Sites</th>
         <th>Schedule</th>
@@ -110,10 +122,18 @@
         data-product="{{ job.product_name | lower }}"
         data-type="{{ 'scout' if is_scout else 'price' }}"
         data-schedule="{{ job.schedule_interval }}"
+        data-company="{{ job.company_id if job.company_id else '__none__' }}"
       >
         <td>
           <div class="product-name">{{ job.product_name }}</div>
           <div class="product-id">#{{ job.id }}</div>
+        </td>
+        <td>
+          {% if job.company %}
+            <span style="font-size:0.82rem;font-weight:500;color:var(--text-secondary)">{{ job.company.name }}</span>
+          {% else %}
+            <span style="color:var(--muted-light);font-size:0.8rem">—</span>
+          {% endif %}
         </td>
         <td>
           {% if is_scout %}
@@ -365,13 +385,15 @@ const TOTAL = {{ jobs|length }};
 function applyFilters() {
   const query    = document.getElementById('search-input').value.trim().toLowerCase();
   const type     = document.getElementById('filter-type').value;
+  const company  = document.getElementById('filter-company').value;
   const schedule = document.getElementById('filter-schedule').value;
 
   let visible = 0;
   document.querySelectorAll('#jobs-tbody tr').forEach(row => {
     const match =
-      (!query    || (row.dataset.product  || '').includes(query)) &&
-      (type     === 'all' || row.dataset.type     === type)       &&
+      (!query    || (row.dataset.product  || '').includes(query))  &&
+      (type     === 'all' || row.dataset.type     === type)        &&
+      (company  === 'all' || row.dataset.company  === company)     &&
       (schedule === 'all' || row.dataset.schedule === schedule);
 
     row.classList.toggle('row-hidden', !match);
@@ -393,7 +415,7 @@ function applyFilters() {
   document.getElementById('jobs-table').style.display  = isEmpty ? 'none'  : '';
 
   // Clear button
-  const isFiltered = query || type !== 'all' || schedule !== 'all';
+  const isFiltered = query || type !== 'all' || company !== 'all' || schedule !== 'all';
   document.getElementById('clear-btn').style.display = isFiltered ? 'inline-flex' : 'none';
 
   // Search clear ✕
@@ -406,8 +428,9 @@ function clearSearch() {
 }
 
 function clearFilters() {
-  document.getElementById('search-input').value = '';
+  document.getElementById('search-input').value    = '';
   document.getElementById('filter-type').value     = 'all';
+  document.getElementById('filter-company').value  = 'all';
   document.getElementById('filter-schedule').value = 'all';
   applyFilters();
 }

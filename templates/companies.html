@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% block title %}Companies — Price Monitor{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Companies</h1>
+    <p class="page-subtitle">{{ company_data|length }} compan{{ 'y' if company_data|length == 1 else 'ies' }} — manage brands and view their monitored products</p>
+  </div>
+  <button class="btn btn-primary" onclick="openAddModal()">+ Add Company</button>
+</div>
+
+{% if error %}
+<div style="background:var(--red-light);border:1px solid var(--red-mid);border-radius:var(--radius-sm);padding:0.75rem 1rem;margin-bottom:1.25rem;color:var(--red);font-size:0.85rem">
+  ⚠ {{ error }}
+</div>
+{% endif %}
+
+{% if not company_data %}
+<div class="card">
+  <div class="empty-state">
+    <div class="empty-icon">🏢</div>
+    <h2>No companies yet</h2>
+    <p>Companies help you organise and filter your monitored products by brand.</p>
+    <button class="btn btn-primary" onclick="openAddModal()">+ Add Company</button>
+  </div>
+</div>
+{% else %}
+<div class="companies-grid">
+  {% for row in company_data %}
+  {% set company = row.company %}
+  {% set jobs    = row.jobs %}
+  <div class="company-card">
+    <div class="company-card-header">
+      <div>
+        <div class="company-name">{{ company.name }}</div>
+        <div class="company-meta">
+          {{ jobs|length }} active product{{ 's' if jobs|length != 1 else '' }}
+          &nbsp;·&nbsp; added {{ company.created_at.strftime('%d %b %Y') if company.created_at else '—' }}
+        </div>
+      </div>
+      <form method="post" action="/companies/{{ company.id }}/delete"
+            onsubmit="return confirmDelete('{{ company.name }}', {{ jobs|length }})">
+        <button type="submit" class="btn btn-danger btn-sm"
+                {% if jobs %}disabled title="Remove all products first"{% endif %}>
+          Delete
+        </button>
+      </form>
+    </div>
+    {% if jobs %}
+    <div class="company-products">
+      {% for job in jobs %}
+      {% set is_scout = job.job_type == 'availability_scout' %}
+      <a href="/job/{{ job.id }}" class="product-row">
+        <div class="product-row-name">{{ job.product_name }}</div>
+        <div class="product-row-meta">
+          {% if is_scout %}
+            <span class="badge badge-purple" style="font-size:0.65rem">Scout</span>
+          {% else %}
+            <span class="badge badge-green"  style="font-size:0.65rem">Watching</span>
+          {% endif %}
+          <span style="font-size:0.75rem;color:var(--muted)">{{ job.schedule_interval }}</span>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="company-empty">No products yet</div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{# ── Add company modal ─────────────────────────────────────────────────── #}
+<div id="modal-backdrop" onclick="closeAddModal()"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:200"></div>
+<div id="add-modal"
+     style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:201;width:100%;max-width:400px;padding:0 1rem">
+  <div class="card" style="padding:1.5rem">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.1rem">
+      <h2 style="font-size:1rem;font-weight:700;color:var(--text)">Add Company</h2>
+      <button onclick="closeAddModal()" style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--muted);line-height:1">✕</button>
+    </div>
+    <div class="form-group" style="margin-bottom:1rem">
+      <label for="modal-name">Company name</label>
+      <input type="text" id="modal-name" placeholder="e.g. Panasonic" autocomplete="off"
+             oninput="clearModalMsg()"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();submitModal()}">
+    </div>
+    <div id="modal-msg" style="font-size:0.8rem;margin-bottom:0.75rem;min-height:1.2em"></div>
+    <div style="display:flex;gap:0.5rem;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeAddModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitModal()">Add Company</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.companies-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1rem;
+}
+.company-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+.company-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-alt);
+}
+.company-name { font-size:0.95rem; font-weight:700; color:var(--text); letter-spacing:-0.01em; }
+.company-meta { font-size:0.75rem; color:var(--muted); margin-top:0.2rem; }
+.company-products { padding: 0.35rem 0; }
+.product-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.55rem 1.1rem;
+  text-decoration: none;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+.product-row:last-child { border-bottom: none; }
+.product-row:hover { background: var(--accent-light); }
+.product-row-name {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.product-row-meta { display:flex; align-items:center; gap:0.4rem; flex-shrink:0; }
+.company-empty { padding:1rem 1.1rem; font-size:0.82rem; color:var(--muted-light); font-style:italic; }
+.btn-sm { font-size:0.75rem; padding:0.35rem 0.7rem; }
+</style>
+
+<script>
+function confirmDelete(name, jobCount) {
+  if (jobCount > 0) return false;
+  return confirm('Delete "' + name + '"? This cannot be undone.');
+}
+function openAddModal() {
+  document.getElementById('modal-backdrop').style.display = 'block';
+  document.getElementById('add-modal').style.display = 'block';
+  setTimeout(() => document.getElementById('modal-name').focus(), 50);
+}
+function closeAddModal() {
+  document.getElementById('modal-backdrop').style.display = 'none';
+  document.getElementById('add-modal').style.display = 'none';
+  document.getElementById('modal-name').value = '';
+  document.getElementById('modal-msg').textContent = '';
+}
+function clearModalMsg() { document.getElementById('modal-msg').textContent = ''; }
+async function submitModal() {
+  const name = document.getElementById('modal-name').value.trim();
+  const msg  = document.getElementById('modal-msg');
+  if (!name) { msg.style.color='var(--red)'; msg.textContent='Please enter a name.'; return; }
+  msg.style.color='var(--muted)'; msg.textContent='Saving\u2026';
+  try {
+    const resp = await fetch('/api/companies',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+    const data = await resp.json();
+    if (data.error && !data.id) { msg.style.color='var(--red)'; msg.textContent=data.error; }
+    else { window.location.reload(); }
+  } catch(e) { msg.style.color='var(--red)'; msg.textContent='Network error.'; }
+}
+document.addEventListener('keydown', e => { if (e.key==='Escape') closeAddModal(); });
+</script>
+{% endblock %}
