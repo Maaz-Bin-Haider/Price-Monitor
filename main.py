@@ -5,28 +5,33 @@ import os
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi import BackgroundTasks, FastAPI, Form, Request
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 
 from config import SITES, settings
 from db.crud import (
     complete_run,
+    complete_site_test_run,
     create_alert_log,
     create_company,
     create_job,
     create_run,
+    create_site_test_run,
     delete_company,
     get_all_active_jobs,
     get_all_companies,
     get_companies_with_active_jobs,
     get_job_by_id,
+    get_recent_site_test_runs,
     get_runs_for_job,
+    get_site_test_run,
     seed_default_companies,
     soft_delete_job,
     update_alert_sent,
     update_job,
     update_last_run,
+    update_site_test_progress,
 )
 from db.models import Base, engine
 from notifications.email import send_alert_email, send_availability_email
@@ -39,6 +44,10 @@ from scheduler import (
     _get_next_run_time,
 )
 from scraper.runner import run_search, run_availability_search
+
+# ── Site testing ───────────────────────────────────────────────────────────
+from testers_and_fixers.test_engine import run_site_tests, select_sites, summarize, DEFAULT_TEST_PRODUCT
+from testers_and_fixers.pdf_report import generate_pdf_report
 
 # ── Auth ───────────────────────────────────────────────────────────────────
 from auth.middleware import AuthMiddleware
@@ -544,3 +553,138 @@ async def delete_company_route(request: Request, company_id: int):
             "error":        msg,
         }, status_code=400)
     return RedirectResponse(url="/companies", status_code=303)
+
+
+# ── Site Testing ─────────────────────────────────────────────────────────────
+
+@app.get("/site-test", response_class=HTMLResponse)
+async def site_test_page(request: Request):
+    """Configuration page: pick sites, set per-site test product, threshold."""
+    recent_runs = get_recent_site_test_runs(limit=10)
+    return templates.TemplateResponse("site_test.html", {
+        "request":     request,
+        "sites":       SITES,
+        "default_product": DEFAULT_TEST_PRODUCT,
+        "recent_runs": recent_runs,
+    })
+
+
+async def _execute_site_test(run_id: int, site_products: dict, threshold: float,
+                              geo_filter: Optional[str], tier_filter: Optional[str],
+                              selected_domains: Optional[list], concurrency: int, timeout: int):
+    """Background task — runs the test suite and persists progress + final results."""
+    async def on_progress(results_so_far):
+        update_site_test_progress(run_id, results_so_far, len(results_so_far))
+
+    try:
+        results = await run_site_tests(
+            site_products=site_products,
+            threshold=threshold,
+            geo_filter=geo_filter,
+            tier_filter=tier_filter,
+            selected_domains=selected_domains,
+            concurrency=concurrency,
+            timeout=timeout,
+            on_progress=on_progress,
+        )
+        complete_site_test_run(run_id, results, status="completed")
+    except Exception as e:
+        print(f"[SITE TEST] run {run_id} failed: {e}")
+        complete_site_test_run(run_id, [], status="failed")
+
+
+@app.post("/site-test/run")
+async def site_test_start(request: Request, background_tasks: BackgroundTasks):
+    """Starts a test run in the background, returns immediately with run_id."""
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    site_products    = body.get("site_products", {})   # {domain: product_name}
+    threshold        = float(body.get("threshold", 50.0))
+    geo_filter       = body.get("geo_filter") or None
+    tier_filter      = body.get("tier_filter") or None
+    selected_domains = body.get("selected_domains") or None
+    concurrency      = int(body.get("concurrency", 3))
+    timeout          = int(body.get("timeout", 90))
+
+    sites = select_sites(geo_filter, tier_filter, selected_domains)
+    if not sites:
+        return JSONResponse({"error": "No sites match the selected filters."}, status_code=400)
+
+    _creator = getattr(request.state, "username", "unknown")
+
+    run = create_site_test_run({
+        "threshold":     threshold,
+        "site_products": site_products,
+        "geo_filter":    geo_filter,
+        "tier_filter":   tier_filter,
+        "total_sites":   len(sites),
+        "started_by":    _creator,
+    })
+    if not run:
+        return JSONResponse({"error": "Could not create test run."}, status_code=500)
+
+    background_tasks.add_task(
+        _execute_site_test, run.id, site_products, threshold,
+        geo_filter, tier_filter, selected_domains, concurrency, timeout,
+    )
+
+    log_activity(
+        username   = _creator,
+        event_type = "site_test_started",
+        detail     = f"Site test #{run.id}: {len(sites)} sites, threshold {threshold}",
+    )
+
+    return JSONResponse({"run_id": run.id, "total_sites": len(sites)})
+
+
+@app.get("/api/site-test/status/{run_id}")
+async def site_test_status(run_id: int):
+    """Polled by the results page while a run is in progress."""
+    run = get_site_test_run(run_id)
+    if not run:
+        return JSONResponse({"error": "Run not found"}, status_code=404)
+    results = _from_json(run.results_json)
+    return JSONResponse({
+        "run_id":          run.id,
+        "status":          run.status,
+        "total_sites":     run.total_sites,
+        "completed_count": run.completed_count,
+        "results":         results,
+    })
+
+
+@app.get("/site-test/results/{run_id}", response_class=HTMLResponse)
+async def site_test_results_page(request: Request, run_id: int):
+    run = get_site_test_run(run_id)
+    if not run:
+        return RedirectResponse(url="/site-test", status_code=302)
+    results = _from_json(run.results_json)
+    summary = summarize(results) if results else {
+        "ok": 0, "parse_ok_no_match": 0, "fetch_fail": 0,
+        "parse_fail": 0, "skipped": 0, "total": run.total_sites, "total_elapsed": 0,
+    }
+    return templates.TemplateResponse("site_test_results.html", {
+        "request": request,
+        "run":     run,
+        "results": sorted(results, key=lambda r: (r["verdict"] != "OK", r["domain"])),
+        "summary": summary,
+    })
+
+
+@app.get("/site-test/results/{run_id}/pdf")
+async def site_test_results_pdf(run_id: int):
+    run = get_site_test_run(run_id)
+    if not run:
+        return JSONResponse({"error": "Run not found"}, status_code=404)
+    results = _from_json(run.results_json)
+    summary = summarize(results)
+    pdf_buffer = generate_pdf_report(run, results, summary)
+    filename = f"site-test-report-{run.id}.pdf"
+    return StreamingResponse(
+        pdf_buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

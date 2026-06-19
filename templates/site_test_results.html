@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+{% block title %}Test Results #{{ run.id }} — Price Monitor{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Test Results <span style="color:var(--muted-light);font-weight:400">#{{ run.id }}</span></h1>
+    <p class="page-subtitle" id="status-line">
+      {% if run.status == 'running' %}
+        Running… {{ run.completed_count }} / {{ run.total_sites }} sites checked
+      {% elif run.status == 'failed' %}
+        Run failed
+      {% else %}
+        Completed {{ run.completed_at.strftime('%d %b %Y, %H:%M') if run.completed_at else '' }} ·
+        threshold {{ run.threshold | int }}%
+      {% endif %}
+    </p>
+  </div>
+  <div style="display:flex;gap:0.5rem">
+    <a href="/site-test" class="btn btn-ghost">← New Test</a>
+    {% if run.status != 'running' %}
+    <a href="/site-test/results/{{ run.id }}/pdf" class="btn btn-primary">⬇ Download PDF</a>
+    {% endif %}
+  </div>
+</div>
+
+{% if run.status == 'running' %}
+<div class="card" style="text-align:center;padding:2rem">
+  <div class="spinner-lg"></div>
+  <div style="margin-top:1rem;font-weight:600;color:var(--text)">Testing sites…</div>
+  <div style="margin-top:0.3rem;font-size:0.85rem;color:var(--muted)">
+    <span id="progress-text">{{ run.completed_count }} / {{ run.total_sites }}</span> complete
+  </div>
+  <div class="progress-track">
+    <div class="progress-fill" id="progress-fill" style="width:{{ (run.completed_count / run.total_sites * 100) if run.total_sites else 0 }}%"></div>
+  </div>
+</div>
+<div id="live-results"></div>
+{% else %}
+
+<!-- Summary cards -->
+<div class="summary-grid">
+  <div class="summary-card summary-green">
+    <div class="summary-value">{{ summary.ok }}</div>
+    <div class="summary-label">✓ Working</div>
+  </div>
+  <div class="summary-card summary-amber">
+    <div class="summary-value">{{ summary.parse_ok_no_match }}</div>
+    <div class="summary-label">~ No Match</div>
+  </div>
+  <div class="summary-card summary-red">
+    <div class="summary-value">{{ summary.fetch_fail }}</div>
+    <div class="summary-label">✗ Fetch Failed</div>
+  </div>
+  <div class="summary-card summary-red">
+    <div class="summary-value">{{ summary.parse_fail }}</div>
+    <div class="summary-label">✗ Parse Failed</div>
+  </div>
+  <div class="summary-card summary-gray">
+    <div class="summary-value">{{ summary.skipped }}</div>
+    <div class="summary-label">− Skipped</div>
+  </div>
+</div>
+
+<!-- Filter pills -->
+<div class="toolbar" style="margin-bottom:1rem">
+  <div class="toolbar-filter-row" style="background:var(--surface)">
+    <div class="filter-controls">
+      <div class="filter-group">
+        <label class="filter-label">Verdict</label>
+        <select id="verdict-filter" onchange="filterResults()">
+          <option value="all">All results</option>
+          <option value="OK">Working only</option>
+          <option value="PARSE_OK_NO_MATCH">No match only</option>
+          <option value="FETCH_FAIL">Fetch failed only</option>
+          <option value="PARSE_FAIL">Parse failed only</option>
+        </select>
+      </div>
+    </div>
+    <span id="result-count" class="result-count"></span>
+  </div>
+</div>
+
+<!-- Results table -->
+<div class="card" style="padding:0;overflow:hidden">
+  <table id="results-table">
+    <thead>
+      <tr>
+        <th>Site</th>
+        <th>Verdict</th>
+        <th>Items / Matched</th>
+        <th>Time</th>
+        <th>Test Product</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in results %}
+      <tr class="result-row" data-verdict="{{ r.verdict }}">
+        <td>
+          <div class="site-name">{{ r.name }}</div>
+          <div class="site-domain">{{ r.domain }}</div>
+        </td>
+        <td>
+          {% if r.verdict == 'OK' %}<span class="badge badge-green">Working</span>
+          {% elif r.verdict == 'PARSE_OK_NO_MATCH' %}<span class="badge badge-amber">No Match</span>
+          {% elif r.verdict == 'FETCH_FAIL' %}<span class="badge badge-red">Fetch Failed</span>
+          {% elif r.verdict == 'PARSE_FAIL' %}<span class="badge badge-red">Parse Failed</span>
+          {% else %}<span class="badge" style="background:var(--surface-alt);color:var(--muted)">Skipped</span>{% endif %}
+        </td>
+        <td>
+          <span style="font-family:var(--mono);font-size:0.82rem">{{ r.items }} / {{ r.matched }}</span>
+        </td>
+        <td class="text-muted" style="font-family:var(--mono);font-size:0.8rem">
+          {{ "%.1f"|format(r.elapsed) }}s
+        </td>
+        <td>
+          <span style="font-size:0.78rem;color:var(--muted)">{{ r.product }}</span>
+          {% if r.error %}<div style="font-size:0.7rem;color:var(--red);margin-top:0.15rem">{{ r.error[:80] }}</div>{% endif %}
+        </td>
+        <td>
+          {% if r.sample_items %}
+          <button class="btn btn-ghost btn-sm" onclick="toggleSamples('{{ r.domain }}')">View items</button>
+          {% endif %}
+        </td>
+      </tr>
+      {% if r.sample_items %}
+      <tr class="sample-row" id="samples-{{ r.domain }}" style="display:none">
+        <td colspan="6">
+          <div class="sample-box">
+            {% for item in r.sample_items %}
+            <a href="{{ item.url }}" target="_blank" class="sample-item">
+              <span class="sample-title">{{ item.title }}</span>
+              {% if item.price %}<span class="sample-price">${{ "%.2f"|format(item.price) }}</span>{% endif %}
+            </a>
+            {% endfor %}
+          </div>
+        </td>
+      </tr>
+      {% endif %}
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<style>
+.spinner-lg {
+  width: 36px; height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  margin: 0 auto;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.progress-track {
+  margin: 1rem auto 0;
+  max-width: 320px;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.summary-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  text-align: center;
+}
+.summary-value { font-size: 1.75rem; font-weight: 700; line-height: 1; }
+.summary-label { font-size: 0.72rem; color: var(--muted); margin-top: 0.3rem; font-weight: 600; }
+.summary-green .summary-value { color: var(--green); }
+.summary-amber .summary-value { color: var(--amber); }
+.summary-red   .summary-value { color: var(--red); }
+.summary-gray  .summary-value { color: var(--muted); }
+
+.btn-sm { font-size: 0.72rem; padding: 0.3rem 0.6rem; }
+.text-muted { color: var(--muted); }
+
+.site-name { font-weight: 600; font-size: 0.85rem; color: var(--text); }
+.site-domain { font-size: 0.72rem; color: var(--muted-light); font-family: var(--mono); margin-top: 0.1rem; }
+
+.sample-row td { padding: 0 !important; border-top: none !important; }
+.sample-box {
+  background: var(--surface-alt);
+  padding: 0.6rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.sample-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  text-decoration: none;
+  font-size: 0.78rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.sample-item:last-child { border-bottom: none; }
+.sample-title { color: var(--text-secondary); flex: 1; }
+.sample-price { color: var(--accent); font-weight: 600; font-family: var(--mono); flex-shrink: 0; }
+
+.result-count { font-size: 0.78rem; color: var(--muted); }
+
+tr.row-hidden { display: none; }
+</style>
+
+<script>
+function toggleSamples(domain) {
+  const row = document.getElementById('samples-' + domain);
+  row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+}
+
+function filterResults() {
+  const v = document.getElementById('verdict-filter').value;
+  let visible = 0;
+  document.querySelectorAll('.result-row').forEach(row => {
+    const show = v === 'all' || row.dataset.verdict === v;
+    row.classList.toggle('row-hidden', !show);
+    if (show) visible++;
+    // also hide its sample row if present
+    const domain = row.querySelector('.site-domain')?.textContent;
+  });
+  const total = document.querySelectorAll('.result-row').length;
+  document.getElementById('result-count').textContent =
+    visible < total ? `${visible} of ${total} shown` : '';
+}
+
+{% if run.status == 'running' %}
+const RUN_ID = {{ run.id }};
+const TOTAL  = {{ run.total_sites }};
+
+async function poll() {
+  try {
+    const resp = await fetch('/api/site-test/status/' + RUN_ID);
+    const data = await resp.json();
+
+    if (data.status === 'completed' || data.status === 'failed') {
+      window.location.reload();
+      return;
+    }
+
+    document.getElementById('progress-text').textContent = data.completed_count + ' / ' + data.total_sites;
+    const pct = data.total_sites ? (data.completed_count / data.total_sites * 100) : 0;
+    document.getElementById('progress-fill').style.width = pct + '%';
+
+    setTimeout(poll, 2000);
+  } catch (e) {
+    setTimeout(poll, 3000);
+  }
+}
+poll();
+{% endif %}
+</script>
+{% endblock %}

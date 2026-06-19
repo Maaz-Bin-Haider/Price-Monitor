@@ -86,6 +86,24 @@ class AlertLog(Base):
     run_result = relationship("RunResult", back_populates="alert_logs")
 
 
+# ── SiteTestRun ──────────────────────────────────────────────────────────────
+class SiteTestRun(Base):
+    __tablename__ = "site_test_runs"
+
+    id            = Column(Integer, primary_key=True, autoincrement=True)
+    status        = Column(String(20), nullable=False, default="running")  # running | completed | failed
+    threshold     = Column(Float, nullable=False, default=50.0)
+    site_products = Column(Text, nullable=False)   # JSON: {domain: product_name}
+    geo_filter    = Column(String(10), nullable=True)
+    tier_filter   = Column(String(20), nullable=True)
+    results_json  = Column(Text, nullable=True)     # JSON array of per-site result dicts
+    total_sites   = Column(Integer, nullable=False, default=0)
+    completed_count = Column(Integer, nullable=False, default=0)
+    started_at    = Column(DateTime, default=datetime.utcnow)
+    completed_at  = Column(DateTime, nullable=True)
+    started_by    = Column(String(64), nullable=True, default="unknown")
+
+
 # ── DB engine ──────────────────────────────────────────────────────────────
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:

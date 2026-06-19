@@ -4,7 +4,7 @@ from typing import Optional
 
 from sqlalchemy.orm import Session, joinedload, sessionmaker
 
-from db.models import AlertLog, Base, Company, RunResult, WatchlistJob, engine
+from db.models import AlertLog, Base, Company, RunResult, SiteTestRun, WatchlistJob, engine
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -369,6 +369,95 @@ def update_last_run(job_id: int, lowest: Optional[float], next_run: datetime) ->
             db.commit()
     except Exception as e:
         print(f"[DB ERROR] update_last_run({job_id}): {e}")
+        db.rollback()
+    finally:
+        db.close()
+
+
+# ── SiteTestRun CRUD ───────────────────────────────────────────────────────
+
+def create_site_test_run(data: dict) -> Optional[SiteTestRun]:
+    db = get_db()
+    try:
+        site_products = data.get("site_products", {})
+        run = SiteTestRun(
+            status        = "running",
+            threshold     = data.get("threshold", 50.0),
+            site_products = json.dumps(site_products),
+            geo_filter    = data.get("geo_filter"),
+            tier_filter   = data.get("tier_filter"),
+            results_json  = "[]",
+            total_sites   = data.get("total_sites", 0),
+            completed_count = 0,
+            started_by    = data.get("started_by", "unknown"),
+        )
+        db.add(run)
+        db.commit()
+        db.refresh(run)
+        return run
+    except Exception as e:
+        print(f"[DB ERROR] create_site_test_run: {e}")
+        db.rollback()
+        return None
+    finally:
+        db.close()
+
+
+def get_site_test_run(run_id: int) -> Optional[SiteTestRun]:
+    db = get_db()
+    try:
+        return db.query(SiteTestRun).filter(SiteTestRun.id == run_id).first()
+    except Exception as e:
+        print(f"[DB ERROR] get_site_test_run({run_id}): {e}")
+        return None
+    finally:
+        db.close()
+
+
+def get_recent_site_test_runs(limit: int = 20) -> list[SiteTestRun]:
+    db = get_db()
+    try:
+        return (
+            db.query(SiteTestRun)
+            .order_by(SiteTestRun.started_at.desc())
+            .limit(limit)
+            .all()
+        )
+    except Exception as e:
+        print(f"[DB ERROR] get_recent_site_test_runs: {e}")
+        return []
+    finally:
+        db.close()
+
+
+def update_site_test_progress(run_id: int, results: list, completed_count: int) -> None:
+    """Called after each site finishes — updates progress for polling."""
+    db = get_db()
+    try:
+        run = db.query(SiteTestRun).filter(SiteTestRun.id == run_id).first()
+        if run:
+            run.results_json     = json.dumps(results)
+            run.completed_count  = completed_count
+            db.commit()
+    except Exception as e:
+        print(f"[DB ERROR] update_site_test_progress({run_id}): {e}")
+        db.rollback()
+    finally:
+        db.close()
+
+
+def complete_site_test_run(run_id: int, results: list, status: str = "completed") -> None:
+    db = get_db()
+    try:
+        run = db.query(SiteTestRun).filter(SiteTestRun.id == run_id).first()
+        if run:
+            run.results_json    = json.dumps(results)
+            run.completed_count = len(results)
+            run.status          = status
+            run.completed_at    = datetime.utcnow()
+            db.commit()
+    except Exception as e:
+        print(f"[DB ERROR] complete_site_test_run({run_id}): {e}")
         db.rollback()
     finally:
         db.close()

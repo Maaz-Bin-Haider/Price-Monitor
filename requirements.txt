@@ -19,3 +19,5 @@ python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
 bcrypt==4.0.1
 # python-multipart already present above
+# ── Site testing (PDF report generation) ───────────
+reportlab>=4.2.0
